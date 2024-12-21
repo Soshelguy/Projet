@@ -1,0 +1,46 @@
+# Node.js dependencies
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Build outputs
+build/
+dist/
+android/app/build/
+ios/Pods/
+android/.gradle/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE/editor settings
+.vscode/
+.idea/
+
+# React Native specific
+*.iml
+*.hprof
+*.lock
+*.pyc
+*.temp
+*.obj
+*.pch
+*.exe
+*.dll
+*.cmd
+*.DS_Store
+*.ipa
+*.jar
+*.class
+*.swp
+*.swo
