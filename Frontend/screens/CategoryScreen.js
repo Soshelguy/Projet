@@ -2,26 +2,30 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
 import axios from 'axios';
 
+// Component for displaying products within a specific category
 const CategoryScreen = ({ route }) => {
-    const { categoryName } = route.params; 
-    const [products, setProducts] = useState([]);
-    const [error, setError] = useState(null);
+    const { categoryName } = route.params; // Destructure category name from route params
+    const [products, setProducts] = useState([]); // State to store fetched products
+    const [fetchError, setFetchError] = useState(null); // State to store fetch error message
 
     useEffect(() => {
+        // Function to fetch products by the given category name
         const fetchProductsByCategory = async () => {
             try {
-                const response = await axios.get(`https://8b7f-41-100-123-0.ngrok-free.app/api/products?name=${categoryName}`);
-                setProducts(response.data);
-            } catch (err) {
-                console.error('Error fetching products:', err);
-                setError('Failed to fetch products. Please try again later.');
+                // Fetch products from the API filtered by category name
+                const response = await axios.get(`https://cf8f-197-203-19-175.ngrok-free.app/api/products?name=${categoryName}`);
+                setProducts(response.data); // Update products state with fetched data
+            } catch (error) {
+                console.error('Error fetching products:', error);
+                setFetchError('Failed to fetch products. Please try again later.');
             }
         };
 
         fetchProductsByCategory();
-    }, [categoryName]); 
+    }, [categoryName]); // Re-run effect when categoryName changes
 
-    const renderProduct = ({ item }) => (
+    // Function to render each product item
+    const renderProductItem = ({ item }) => (
         <View style={styles.productCard}>
             <TouchableOpacity>
                 <Image source={{ uri: item.image }} style={styles.productImage} />
@@ -33,10 +37,11 @@ const CategoryScreen = ({ route }) => {
         </View>
     );
 
-    if (error) {
+    // Display error message if product fetching fails
+    if (fetchError) {
         return (
             <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
+                <Text style={styles.errorText}>{fetchError}</Text>
             </View>
         );
     }
@@ -44,15 +49,16 @@ const CategoryScreen = ({ route }) => {
     return (
         <View style={styles.container}>
             <FlatList
-                data={products}
-                renderItem={renderProduct}
-                keyExtractor={(item) => item._id} 
-                ListEmptyComponent={() => <Text>No products available in this category.</Text>}
+                data={products} // Pass products to FlatList
+                renderItem={renderProductItem} // Render each item using renderProductItem
+                keyExtractor={(item) => item._id} // Use unique identifier as the key
+                ListEmptyComponent={() => <Text>No products available in this category.</Text>} // Message when list is empty
             />
         </View>
     );
 };
 
+// Styles for CategoryScreen component
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -93,3 +99,4 @@ const styles = StyleSheet.create({
 });
 
 export default CategoryScreen;
+

@@ -1,42 +1,36 @@
+/**
+ * Screen for user settings and preferences.
+ * Allows users to toggle dark mode, notifications, location services, fast delivery, and contactless delivery.
+ * Provides navigation to profile, order history, and payment methods.
+ * Allows users to log out.
+ */
 import React, { useContext, useState, useRef } from 'react';
-import { View, Text, StyleSheet, Switch, TouchableOpacity, ScrollView, Alert, Modal, Animated,
-    Easing } from 'react-native';
+import { View, Text, StyleSheet, Switch, TouchableOpacity, ScrollView, Alert, Animated, Easing } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { AppSettingsContext } from '../AppSettingsContext';
 import { useAuth } from '../AuthContext';
-
 const SettingsScreen = () => {
     const {
-        darkMode,
+        isDarkMode,
         toggleDarkMode,
-        notifications,
+        areNotificationsEnabled,
         toggleNotifications,
-        location,
+        isLocationEnabled,
         toggleLocation,
-        fastDelivery,
+        isFastDeliveryEnabled,
         toggleFastDelivery,
-        contactlessDelivery,
+        isContactlessDeliveryEnabled,
         toggleContactlessDelivery
     } = useContext(AppSettingsContext);
-    
-    const [showTermsModal, setShowTermsModal] = useState(false);
+
+    const { logout } = useAuth();
     const navigation = useNavigation();
-    const { user, userRole, becomeDeliverer, logout } = useAuth(); 
-    const animatedValue = new Animated.Value(0);
-    const animatedModalValue = useRef(new Animated.Value(0)).current;
     const animatedButtonScale = useRef(new Animated.Value(1)).current;
 
-    const animateModal = (toValue) => {
-        Animated.timing(animatedModalValue, {
-            toValue,
-            duration: 300,
-            easing: Easing.bezier(0.4, 0, 0.2, 1),
-            useNativeDriver: true
-        }).start();
-    };
-
-    // Button press animation
+    /**
+     * Animate a button press by scaling it down and back up.
+     */
     const animateButtonPress = () => {
         Animated.sequence([
             Animated.timing(animatedButtonScale, {
@@ -52,28 +46,34 @@ const SettingsScreen = () => {
         ]).start();
     };
 
-    const openTermsModal = () => {
-        setShowTermsModal(true);
-        animateModal(1);
-    };
-
-    const closeTermsModal = () => {
-        animateModal(0);
-        setTimeout(() => setShowTermsModal(false), 300);
-    };
-
-   const renderSettingsSection = (title, children) => (
-        <View style={[styles.settingsSection, darkMode && styles.darkModeSettingsSection]}>
-            <Text style={[styles.sectionTitle, darkMode && styles.darkModeSectionTitle]}>{title}</Text>
+    /**
+     * Render a settings section with a title and some children.
+     * @param {string} title - The title of the section.
+     * @param {ReactNode} children - The children to render inside the section.
+     */
+    const renderSettingsSection = (title, children) => (
+        <View style={[styles.settingsSection, isDarkMode && styles.darkModeSettingsSection]}>
+            <Text style={[styles.sectionTitle, isDarkMode && styles.darkModeSectionTitle]}>
+                {title}
+            </Text>
             {children}
         </View>
     );
+
+    /**
+     * Render a single setting option with a title, subtitle, and toggle switch.
+     * @param {string} title - The title of the option.
+     * @param {string} subtitle - The subtitle of the option.
+     * @param {boolean} value - The value of the option.
+     * @param {Function} onToggle - The function to call when the toggle switch is pressed.
+     * @param {string} icon - The icon to display next to the option.
+     */
     const renderSettingOption = (title, subtitle, value, onToggle, icon) => (
-        <TouchableOpacity 
+        <TouchableOpacity
             style={[
-                styles.settingOption, 
-                darkMode && styles.darkModeOption,
-                { 
+                styles.settingOption,
+                isDarkMode && styles.darkModeOption,
+                {
                     transform: [{ scale: value ? 1.01 : 1 }],
                     shadowOpacity: value ? 0.2 : 0.1
                 }
@@ -84,103 +84,81 @@ const SettingsScreen = () => {
             }}
         >
             <View style={styles.optionContent}>
-                <Icon 
-                    name={icon} 
-                    size={24} 
-                    color={darkMode ? "#A5F1E9" : "#1F654C"} 
-                    style={styles.optionIcon} 
+                <Icon
+                    name={icon}
+                    size={24}
+                    color={isDarkMode ? "#A5F1E9" : "#1F654C"}
+                    style={styles.optionIcon}
                 />
                 <View>
-                    <Text style={[styles.optionTitle, darkMode && styles.darkModeText]}>{title}</Text>
+                    <Text style={[styles.optionTitle, isDarkMode && styles.darkModeText]}>
+                        {title}
+                    </Text>
                     {subtitle && <Text style={styles.optionSubtitle}>{subtitle}</Text>}
                 </View>
             </View>
             <Animated.View style={{ transform: [{ scale: animatedButtonScale }] }}>
                 <Switch
-                    trackColor={{ 
-                        false: darkMode ? '#444' : '#767577', 
-                        true: darkMode ? '#A5F1E9' : '#1F654C' 
+                    trackColor={{
+                        false: isDarkMode ? '#444' : '#767577',
+                        true: isDarkMode ? '#A5F1E9' : '#1F654C'
                     }}
-                    thumbColor={value ? (darkMode ? '#1E2541' : '#f4f3f4') : '#f4f3f4'}
+                    thumbColor={value ? (isDarkMode ? '#1E2541' : '#f4f3f4') : '#f4f3f4'}
                     onValueChange={onToggle}
                     value={value}
                 />
             </Animated.View>
         </TouchableOpacity>
     );
+
+    /**
+     * Render a section with navigation options.
+     */
     const renderNavigationSection = () => (
-        <View style={[styles.navigationSection, darkMode && styles.darkModenavigationSection]}>
+        <View style={[styles.navigationSection, isDarkMode && styles.darkModenavigationSection]}>
             {[
-                { 
-                    title: 'My Profile', 
-                    icon: 'person-outline', 
-                    onPress: () => navigation.navigate('Profile') 
+                {
+                    title: 'My Profile',
+                    icon: 'person-outline',
+                    onPress: () => navigation.navigate('Profile')
                 },
-                { 
-                    title: 'Order History', 
-                    icon: 'receipt-outline', 
-                    onPress: () => navigation.navigate('OrderHistory') 
+                {
+                    title: 'Order History',
+                    icon: 'receipt-outline',
+                    onPress: () => navigation.navigate('OrderHistory')
                 },
-                { 
-                    title: 'Payment Methods', 
-                    icon: 'card-outline', 
-                    onPress: () => navigation.navigate('PaymentMethods') 
+                {
+                    title: 'Payment Methods',
+                    icon: 'card-outline',
+                    onPress: () => navigation.navigate('PaymentMethods')
                 }
             ].map((item, index) => (
-                <TouchableOpacity 
-                    key={index} 
+                <TouchableOpacity
+                    key={index}
                     style={styles.navigationItem}
                     onPress={item.onPress}
                 >
-                    <Icon 
-                        name={item.icon} 
-                        size={24} 
-                        color={darkMode ? "#A5F1E9" : "#1F654C"}
+                    <Icon
+                        name={item.icon}
+                        size={24}
+                        color={isDarkMode ? "#A5F1E9" : "#1F654C"}
                     />
-                    <Text style={[styles.navigationItemText, darkMode && styles.darkModeText]}>
+                    <Text style={[styles.navigationItemText, isDarkMode && styles.darkModeText]}>
                         {item.title}
                     </Text>
-                    <Icon 
-                        name="chevron-forward" 
-                        size={24} 
-                        color={darkMode ? "#A5F1E9" : "#1F654C"}
+                    <Icon
+                        name="chevron-forward"
+                        size={24}
+                        color={isDarkMode ? "#A5F1E9" : "#1F654C"}
                     />
                 </TouchableOpacity>
             ))}
         </View>
     );
 
-    const handleBecomeDeliverer = async () => {
-        try {
-            const result = await becomeDeliverer();
-            if (result.success) {
-                Alert.alert(
-                    "Application Submitted", 
-                    "Your application to become a deliverer has been submitted for review. We'll notify you once it's approved."
-                );
-                setShowTermsModal(false);
-            } else {
-                Alert.alert("Error", result.message || "Failed to submit application");
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            Alert.alert("Error", "Something went wrong. Please try again.");
-        }
-    };
-
-    const renderBecomeDelivererButton = () => {
-        if (userRole !== 'CLIENT') return null;
-        
-        if (user?.deliverer_application_status === 'PENDING') {
-            return (
-                <View style={styles.button}>
-                    <Text style={[styles.buttonText, { color: '#666' }]}>
-                        Application Pending
-                    </Text>
-                </View>
-            );
-        }}
-
+    /**
+     * Handle the logout button press by calling the logout function and navigating to the auth screen.
+     */
     const handleLogout = async () => {
         const result = await logout();
         if (result.success) {
@@ -193,167 +171,79 @@ const SettingsScreen = () => {
         }
     };
 
-    const DelivererTermsModal = () => {
-        const modalAnimatedStyle = {
-            opacity: animatedModalValue.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 1]
-            }),
-            transform: [
-                { 
-                    translateY: animatedModalValue.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [50, 0]
-                    })
-                },
-                { 
-                    scale: animatedModalValue.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.9, 1]
-                    })
-                }
-            ]
-        };
-
-        return (
-            <Modal
-                visible={showTermsModal}
-                animationType="fade"
-                transparent={true}
-                onRequestClose={closeTermsModal}
-            >
-                <View style={styles.modalOverlay}>
-                    <Animated.View style={[styles.modalContainer, modalAnimatedStyle]}>
-                        <View style={styles.modalContent}>
-                            <Text style={[styles.modalTitle, darkMode && styles.darkModeText]}>
-                                Deliverer Terms & Conditions
-                            </Text>
-                            <ScrollView style={styles.modalScroll}>
-                                <Text style={[styles.modalText, darkMode && styles.darkModeText]}>
-                                    {[
-                                        "1. You must be at least 18 years old.",
-                                        "2. You must have a valid driver's license.",
-                                        "3. You must have your own transportation.",
-                                        "4. You must maintain a good rating.",
-                                        "5. You must complete deliveries in a timely manner.",
-                                        "6. You must follow our safety guidelines."
-                                    ].join('\n\n')}
-                                </Text>
-                            </ScrollView>
-                            <View style={styles.modalButtons}>
-                                <TouchableOpacity 
-                                    style={[
-                                        styles.modalButton, 
-                                        styles.cancelButton, 
-                                        darkMode && styles.darkModeModalButton
-                                    ]}
-                                    onPress={closeTermsModal}
-                                >
-                                    <Text style={styles.buttonText}>Cancel</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity 
-                                    style={[
-                                        styles.modalButton, 
-                                        styles.acceptButton, 
-                                        darkMode && styles.darkModeAcceptButton
-                                    ]}
-                                    onPress={() => {
-                                        closeTermsModal();
-                                        handleBecomeDeliverer();
-                                    }}
-                                >
-                                    <Text style={styles.buttonText}>Accept & Apply</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </Animated.View>
-                </View>
-            </Modal>
-        );
-    };
-
     return (
-        <View style={[styles.container, darkMode && styles.darkModeContainer]}>
-            <ScrollView 
+        <View style={[styles.container, isDarkMode && styles.darkModeContainer]}>
+            <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollViewContent}
             >
-            <Text style={[styles.screenTitle, darkMode && styles.darkModeText]}>Settings</Text>
-                
+                <Text style={[styles.screenTitle, isDarkMode && styles.darkModeText]}>Settings</Text>
                 {renderSettingsSection('App Preferences', (
                     <>
                         {renderSettingOption(
-                            'Dark Mode', 
-                            'Switch between light and dark themes', 
-                            darkMode, 
-                            toggleDarkMode, 
+                            'Dark Mode',
+                            'Switch between light and dark themes',
+                            isDarkMode,
+                            toggleDarkMode,
                             'moon-outline'
                         )}
                         {renderSettingOption(
-                            'Notifications', 
-                            'Receive updates and alerts', 
-                            notifications, 
-                            toggleNotifications, 
+                            'Notifications',
+                            'Receive updates and alerts',
+                            areNotificationsEnabled,
+                            toggleNotifications,
                             'notifications-outline'
                         )}
                     </>
                 ))}
-
                 {renderSettingsSection('Delivery Preferences', (
                     <>
                         {renderSettingOption(
-                            'Location Services', 
-                            'Enable precise delivery tracking', 
-                            location, 
-                            toggleLocation, 
+                            'Location Services',
+                            'Enable precise delivery tracking',
+                            isLocationEnabled,
+                            toggleLocation,
                             'location-outline'
                         )}
                         {renderSettingOption(
-                            'Fast Delivery', 
-                            'Priority shipping option', 
-                            fastDelivery, 
-                            toggleFastDelivery, 
+                            'Fast Delivery',
+                            'Priority shipping option',
+                            isFastDeliveryEnabled,
+                            toggleFastDelivery,
                             'flash-outline'
                         )}
                         {renderSettingOption(
-                            'Contactless Delivery', 
-                            'Safe and convenient drop-off', 
-                            contactlessDelivery, 
-                            toggleContactlessDelivery, 
+                            'Contactless Delivery',
+                            'Safe and convenient drop-off',
+                            isContactlessDeliveryEnabled,
+                            toggleContactlessDelivery,
                             'hand-left-outline'
                         )}
                     </>
                 ))}
-
                 {renderSettingsSection('Account', (
                     <>
                         {renderNavigationSection()}
-                        
                     </>
                 ))}
-               
-
-
-                
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[
-                        styles.logoutButton, 
-                        darkMode && styles.darkModeLogoutButton
+                        styles.logoutButton,
+                        isDarkMode && styles.darkModeLogoutButton
                     ]}
                     onPress={handleLogout}
                 >
                     <Text style={[
-                        styles.logoutButtonText, 
-                        darkMode && styles.darkModeLogoutButtonText
-                    ]}>Log Out</Text>
+                        styles.logoutButtonText,
+                        isDarkMode && styles.darkModeLogoutButtonText
+                    ]}>
+                        Log Out
+                    </Text>
                 </TouchableOpacity>
             </ScrollView>
-            <DelivererTermsModal />
         </View>
     );
 };
-
-
 
 const styles = StyleSheet.create({
     container: {
@@ -383,7 +273,6 @@ const styles = StyleSheet.create({
     darkModeSettingsSection: {
         backgroundColor: 'rgba(30,37,65,0.8)',
     },
-
     title: {
         fontSize: 28,
         fontWeight: '600',
@@ -412,27 +301,6 @@ const styles = StyleSheet.create({
         elevation: 3,
         transition: 'all 0.3s ease',
     },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    modalContainer: {
-        width: '90%',
-        maxHeight: '80%',
-        backgroundColor: 'white',
-        borderRadius: 20,
-        overflow: 'hidden',
-    },
-    darkModeModalButton: {
-        backgroundColor: '#2C2C2C',
-    },
-    darkModeAcceptButton: {
-        backgroundColor: '#1F654C',
-        opacity: 0.9,
-    },
     optionContent: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -456,7 +324,6 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(30,37,65,0.8)',
         borderRadius: 12,
         marginBottom: 16,
-
     },
     navigationItem: {
         flexDirection: 'row',
@@ -473,65 +340,8 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#333',
     },
-    delivererButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#1F654C',
-        paddingVertical: 16,
-        paddingHorizontal: 16,
-        borderRadius: 12,
-        justifyContent: 'center',
-    },
-    delivererButtonIcon: {
-        marginRight: 12,
-    },
-    delivererButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    
-    option: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        paddingVertical: 16,
-        paddingHorizontal: 20,
-        borderRadius: 12,
-        marginBottom: 20,
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 3.84,
-        elevation: 5,
-    },
-    optionLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
     optionIcon: {
         marginRight: 10,
-    },
-    optionText: {
-        fontSize: 18,
-        color: '#333',
-    },
-   
-    button: {
-        backgroundColor: '#1F654C',
-        paddingVertical: 14,
-        borderRadius: 30,
-        alignItems: 'center',
-        marginBottom: 15,
-    },
-    buttonText: {
-        color: '#FFF',
-        fontWeight: '600',
-        fontSize: 18,
     },
     logoutButton: {
         backgroundColor: '#FF6B6B',
@@ -545,43 +355,6 @@ const styles = StyleSheet.create({
     logoutButtonText: {
         color: '#FFF',
     },
-    modalContent: {
-        backgroundColor: 'white',
-        borderRadius: 20,
-        padding: 20,
-        width: '90%',
-        maxHeight: '80%',
-    },
-    modalTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 20,
-        textAlign: 'center',
-    },
-    modalScroll: {
-        maxHeight: 300,
-    },
-    modalText: {
-        fontSize: 16,
-        lineHeight: 24,
-    },
-    modalButtons: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 20,
-    },
-    modalButton: {
-        flex: 1,
-        padding: 15,
-        borderRadius: 10,
-        marginHorizontal: 5,
-    },
-    cancelButton: {
-        backgroundColor: '#FF6B6B',
-    },
-    acceptButton: {
-        backgroundColor: '#1F654C',
-    },
     darkModeContainer: {
         backgroundColor: '#1E2541',
     },
@@ -593,9 +366,6 @@ const styles = StyleSheet.create({
     },
     darkModeOption: {
         backgroundColor: '#2C2C2C',
-    },
-    darkModeText: {
-        color: '#A5F1E9',
     },
     darkModeButton: {
         backgroundColor: '#2C2C2C',
@@ -613,3 +383,6 @@ const styles = StyleSheet.create({
 });
 
 export default SettingsScreen;
+
+
+

@@ -1,85 +1,84 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
 import { Text } from 'react-native';
 
+// Create AuthContext for managing authentication state
 const AuthContext = createContext();
-const API_URL = 'https://8b7f-41-100-123-0.ngrok-free.app'; 
+const API_URL = 'https://cf8f-197-203-19-175.ngrok-free.app'; 
 
+// Provide authentication-related functionality to components
 export const AuthProvider = ({ children }) => {
-    const [currentUser, setCurrentUser] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [userRole, setUserRole] = useState('CLIENT');
-    const [authToken, setAuthToken] = useState(null);
+    const [currentUser, setCurrentUser] = useState(null); // Stores current user info
+    const [loading, setLoading] = useState(true); // Loading state for async operations
+    const [userRole, setUserRole] = useState('CLIENT'); // Default role
+    const [authToken, setAuthToken] = useState(null); // Authentication token
 
-    const [user, setUser] = useState(null);
-    const [tempUser, setTempUser] = useState(null);
+    const [user, setUser] = useState(null); // User state
+    const [tempUser, setTempUser] = useState(null); // Temporary user data, if needed
 
-    
+    // Load user and token from storage, validate token, and fetch user profile
     const loadStoredUser = async () => {
         try {
-          const storedToken = await AsyncStorage.getItem('authToken');
+            const storedToken = await AsyncStorage.getItem('authToken');
       
-          if (storedToken) {
-            try {
-              // Validate token with backend
-              const response = await fetch(`${API_URL}/api/auth/validate-token`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${storedToken}`,
-                },
-              });
-      
-              if (response.ok) {
-                setAuthToken(storedToken);
-      
-                // Fetch the latest user profile
-                const profileResponse = await fetch(`${API_URL}/api/users/profile`, {
-                  method: 'GET',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${storedToken}`,
-                  },
-                });
-      
-                if (profileResponse.ok) {
-                  const profileData = await profileResponse.json();
-                  setUser(profileData);
-                } else {
-                  // Failed to fetch profile data
-                  await logout();
+            if (storedToken) {
+                try {
+                    // Validate token with backend
+                    const response = await fetch(`${API_URL}/api/auth/validate-token`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${storedToken}`,
+                        },
+                    });
+              
+                    if (response.ok) {
+                        setAuthToken(storedToken);
+
+                        // Fetch the latest user profile
+                        const profileResponse = await fetch(`${API_URL}/api/users/profile`, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${storedToken}`,
+                            },
+                        });
+
+                        if (profileResponse.ok) {
+                            const profileData = await profileResponse.json();
+                            setUser(profileData);
+                        } else {
+                            // Failed to fetch profile data
+                            await logout();
+                        }
+                    } else {
+                        // Token is invalid, clear storage
+                        await logout();
+                    }
+                } catch (validationError) {
+                    console.error('Token validation error:', validationError);
+                    await logout();
                 }
-              } else {
-                // Token is invalid, clear storage
-                await logout();
-              }
-            } catch (validationError) {
-              console.error('Token validation error:', validationError);
-              await logout();
+            } else {
+                setLoading(false); // No token found, loading complete
             }
-          } else {
-            setLoading(false);
-          }
         } catch (error) {
-          console.error('Error loading stored user:', error);
+            console.error('Error loading stored user:', error);
         } finally {
-          setLoading(false);
+            setLoading(false); // Ensure loading is set to false
         }
-      };
-      
-      useEffect(() => {
+    };
+
+    useEffect(() => {
         loadStoredUser();
-      }, []);
+    }, []);
 
-
+    // Log in a user and store their data in AsyncStorage
     const login = async (userData) => {
         try {
-            // Ensure we have a token
             const token = userData.token || userData.authToken || 
                 await generateToken(userData);
-    
+
             // Store the token and user data
             await AsyncStorage.setItem('authToken', token);
             await AsyncStorage.setItem('user', JSON.stringify({
@@ -90,7 +89,7 @@ export const AuthProvider = ({ children }) => {
                 address: userData.address,
                 profileImage: userData.profileImageUrl
             }));
-    
+
             // Set user and token in context
             setUser({
                 id: userData.id,
@@ -102,14 +101,15 @@ export const AuthProvider = ({ children }) => {
             });
             setAuthToken(token);
             setUserRole(userData.role || 'CLIENT');
-    
+
             return { success: true };
         } catch (error) {
             console.error('Error during login:', error);
             throw error;
         }
     };
-    
+
+    // Generate a token for a user
     const generateToken = async (userData) => {
         try {
             const response = await fetch(`${API_URL}/api/auth/generate-token`, {
@@ -136,6 +136,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Log out the user and clear data from AsyncStorage
     const logout = async () => {
         try {
             await AsyncStorage.multiRemove(['authToken', 'user']);
@@ -149,6 +150,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Apply for deliverer role
     const becomeDeliverer = async () => {
         try {
             const response = await fetch(`${API_URL}/api/deliverer/apply`, {
@@ -158,18 +160,14 @@ export const AuthProvider = ({ children }) => {
                 },
                 body: JSON.stringify({ userId: user.id })
             });
-    
-            console.log('Status:', response.status); 
-            console.log('Headers:', response.headers); 
+
             const textResponse = await response.text();
-            console.log('Raw response:', textResponse);
-    
             const data = response.headers.get("content-type")?.includes("application/json") ? JSON.parse(textResponse) : null;
-    
+
             if (data?.success) {
                 setUser(prev => ({ ...prev, deliverer_application_status: 'PENDING' }));
             }
-    
+
             return data || { success: false, message: 'Unexpected response format' };
         } catch (error) {
             console.error('Error becoming deliverer:', error);
@@ -177,6 +175,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Apply for service provider role
     const becomeServiceProvider = async () => {
         try {
             const response = await fetch(`${API_URL}/api/request-service-provider`, {
@@ -186,23 +185,24 @@ export const AuthProvider = ({ children }) => {
                 },
                 body: JSON.stringify({ userId: user.id })
             });
-    
+
             const data = await response.json();
-    
+
             if (data.success) {
                 setUser(prev => ({ 
                     ...prev, 
                     service_provider_request: 'PENDING' 
                 }));
             }
-    
+
             return data;
         } catch (error) {
             console.error('Error becoming service provider:', error);
             return { success: false, message: 'Failed to submit application' };
         }
     };
-    
+
+    // Apply for catering business role
     const becomeCateringBusiness = async () => {
         try {
             const response = await fetch(`${API_URL}/api/request-catering-business`, {
@@ -212,44 +212,24 @@ export const AuthProvider = ({ children }) => {
                 },
                 body: JSON.stringify({ userId: user.id })
             });
-    
+
             const data = await response.json();
-    
+
             if (data.success) {
                 setUser(prev => ({ 
                     ...prev, 
                     catering_business_request: 'PENDING' 
                 }));
             }
-    
+
             return data;
         } catch (error) {
             console.error('Error becoming catering business:', error);
             return { success: false, message: 'Failed to submit application' };
         }
     };
-    const approveDelivererRequest = async (req, res) => {
-        try {
-            const { userId } = req.body;
-            
-            await pool.query(
-                'UPDATE users SET role = $1, deliverer_request = FALSE WHERE id = $2',
-                ['DELIVERER', userId]
-            );
-    
-            return res.status(200).json({
-                success: true,
-                message: 'Deliverer request approved successfully'
-            });
-        } catch (error) {
-            console.error('Error in approveDelivererRequest:', error);
-            return res.status(500).json({
-                success: false,
-                message: 'Internal server error'
-            });
-        }
-    };
 
+    // Update user information in AsyncStorage
     const updateUser = async (userData) => {
         try {
             const updatedUser = { ...currentUser, ...userData };
@@ -292,8 +272,10 @@ export const AuthProvider = ({ children }) => {
     );
 };
 
+// Hook to use authentication-related functionality
 export const useAuth = () => {
     return useContext(AuthContext);
 };
 
 export default AuthProvider;
+

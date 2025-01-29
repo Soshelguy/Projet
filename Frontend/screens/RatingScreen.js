@@ -1,19 +1,43 @@
+/**
+ * RatingScreen: A screen for users to rate a service
+ * 
+ * Props:
+ *  - route: An object containing the service ID and booking ID
+ *  - navigation: A navigation object for navigating between screens
+ */
 import React, { useState } from 'react';
+
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+
 import Icon from 'react-native-vector-icons/Ionicons';
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+/**
+ * RatingScreen component
+ * 
+ * @param {Object} props The component props
+ * @returns {React.Component} The RatingScreen component
+ */
 const RatingScreen = ({ route, navigation }) => {
   const { serviceId, bookingId } = route.params;
-  const [rating, setRating] = useState(0);
-  const [review, setReview] = useState('');
 
+  const [userRating, setUserRating] = useState(0);
+  const [userReview, setUserReview] = useState('');
+
+  /**
+   * Handles the submission of the rating and review
+   * 
+   * @returns {Promise} A promise that resolves when the submission is complete
+   */
   const handleSubmit = async () => {
     try {
+      // Get the user ID from AsyncStorage
       const userData = await AsyncStorage.getItem('userData');
       const { id: userId } = JSON.parse(userData);
 
-      const response = await fetch('https://8b7f-41-100-123-0.ngrok-free.app/api/ratings/add', {
+      // Send a POST request to the server to add the rating
+      const response = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/ratings/add', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -21,13 +45,16 @@ const RatingScreen = ({ route, navigation }) => {
         body: JSON.stringify({
           service_id: serviceId,
           user_id: userId,
-          rating,
-          review
+          rating: userRating,
+          review: userReview,
         }),
       });
 
       if (response.ok) {
+        // Navigate back to the previous screen
         navigation.goBack();
+      } else {
+        console.error('Error submitting rating:', response);
       }
     } catch (error) {
       console.error('Error submitting rating:', error);
@@ -37,15 +64,15 @@ const RatingScreen = ({ route, navigation }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Rate this service</Text>
-      
+
       <View style={styles.starsContainer}>
         {[1, 2, 3, 4, 5].map((star) => (
           <TouchableOpacity
             key={star}
-            onPress={() => setRating(star)}
+            onPress={() => setUserRating(star)}
           >
             <Icon
-              name={rating >= star ? 'star' : 'star-outline'}
+              name={userRating >= star ? 'star' : 'star-outline'}
               size={40}
               color="#A5F1E9"
               style={styles.star}
@@ -57,8 +84,8 @@ const RatingScreen = ({ route, navigation }) => {
       <TextInput
         style={styles.reviewInput}
         placeholder="Write your review (optional)"
-        value={review}
-        onChangeText={setReview}
+        value={userReview}
+        onChangeText={setUserReview}
         multiline
         numberOfLines={4}
       />
@@ -66,9 +93,9 @@ const RatingScreen = ({ route, navigation }) => {
       <TouchableOpacity 
         style={[
           styles.submitButton,
-          { opacity: rating === 0 ? 0.5 : 1 }
+          { opacity: userRating === 0 ? 0.5 : 1 }
         ]}
-        disabled={rating === 0}
+        disabled={userRating === 0}
         onPress={handleSubmit}
       >
         <Text style={styles.submitButtonText}>Submit Rating</Text>
@@ -77,6 +104,9 @@ const RatingScreen = ({ route, navigation }) => {
   );
 };
 
+/**
+ * Styles for the RatingScreen component
+ */
 const styles = StyleSheet.create({
   container: {
     flex: 1,

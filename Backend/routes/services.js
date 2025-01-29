@@ -8,12 +8,14 @@ const authenticateUser = require('../middleware/auth');
 const jwt = require('jsonwebtoken'); 
 const { SECRET_KEY } = require('../utils/token');
 
+// Cloudinary configuration
 cloudinary.config({ 
     cloud_name: 'djxbwqkz3', 
     api_key: '128715672197751', 
     api_secret: 'jAmEzO6ck6F7Gl33EaNkuqq_IqI' 
 });
 
+// Multer storage configuration for Cloudinary
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
@@ -23,6 +25,7 @@ const storage = new CloudinaryStorage({
   }
 });
 
+// Middleware to authenticate token
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -31,13 +34,15 @@ const authenticateToken = (req, res, next) => {
 
   jwt.verify(token, SECRET_KEY, (err, decoded) => {
     if (err) return res.status(403).json({ error: 'Invalid or expired token' });
-    req.user = { id: decoded.userId }; // Ensure 'id' is set correctly
+    req.user = { id: decoded.userId };
     next();
   });
 };
 
+// Configure multer with CloudinaryStorage
 const upload = multer({ storage: storage });
 
+// Get all services
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(
@@ -50,9 +55,10 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get services for a specific user
 router.get('/user', authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.id; // Access 'req.user.id' instead of 'req.user.userId'
+    const userId = req.user.id;
 
     const servicesResult = await pool.query(
       'SELECT * FROM services WHERE user_id = $1',
@@ -66,6 +72,7 @@ router.get('/user', authenticateToken, async (req, res) => {
   }
 });
 
+// Get a specific service by ID
 router.get('/:id(\\d+)', async (req, res) => {
   try {
     const { id } = req.params;
@@ -85,14 +92,14 @@ router.get('/:id(\\d+)', async (req, res) => {
   }
 });
 
+// Create a new service
 router.post('/', upload.single('image'), authenticateUser, async (req, res) => {
   try {
-    console.log('Received request body:', req.body);
     const userCheck = await pool.query(
       'SELECT service_provider_request, full_name, phone FROM users WHERE id = $1',
       [req.user.id]
     );
-    console.log('User Check:', userCheck.rows[0]);
+
     const providerFullName = userCheck.rows[0].full_name;
     const providerPhone = userCheck.rows[0].phone;
 
@@ -106,33 +113,8 @@ router.post('/', upload.single('image'), authenticateUser, async (req, res) => {
       userId
     } = req.body;
 
-    console.log('Extracted from req.body:', {
-      name,
-      description,
-      price,
-      category,
-      subcategory,
-      subsubcategory,
-      userId
-    });
-
     const imageUrl = req.file ? req.file.path : null;
     const parsedUserId = parseInt(userId, 10);
-
-    // Additional check for undefined variables
-    if (
-      subcategory === undefined ||
-      subsubcategory === undefined ||
-      providerFullName === undefined ||
-      providerPhone === undefined
-    ) {
-      console.error('Undefined variables detected:', {
-        subcategory,
-        subsubcategory,
-        providerFullName,
-        providerPhone
-      });
-    }
 
     // Check for missing fields
     if (
@@ -158,19 +140,6 @@ router.post('/', upload.single('image'), authenticateUser, async (req, res) => {
       });
     }
 
-    console.log('Attempting to insert with values:', {
-      name,
-      description,
-      price,
-      category,
-      subcategory,
-      subsubcategory,
-      imageUrl,
-      userId: parsedUserId,
-      providerFullName,
-      providerPhone
-    });
-
     const result = await pool.query(
       `INSERT INTO services 
        (name, description, price, category, subcategory, subsubcategory, image, user_id, provider_full_name, provider_phone) 
@@ -190,7 +159,6 @@ router.post('/', upload.single('image'), authenticateUser, async (req, res) => {
       ]
     );
 
-    console.log('Insert successful, returned row:', result.rows[0]);
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Detailed error:', error);
@@ -200,6 +168,8 @@ router.post('/', upload.single('image'), authenticateUser, async (req, res) => {
     });
   }
 });
+
+// Update an existing service
 router.put('/:id', upload.single('image'), async (req, res) => {
   try {
     const { id } = req.params;
@@ -255,6 +225,7 @@ router.put('/:id', upload.single('image'), async (req, res) => {
   }
 });
 
+// Delete a service
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -278,7 +249,8 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete service' });
   }
 });
-// In your backend services route
+
+// Get services by category/subcategory
 router.get('/', async (req, res) => {
   const { category, subcategory, subsubcategory } = req.query;
 
@@ -308,13 +280,14 @@ router.get('/', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// Search for services by query
 router.get('/search/:query', async (req, res) => {
   try {
     const { query } = req.params;
     const result = await pool.query(
       'SELECT * FROM services WHERE name ILIKE $1 OR description ILIKE $1',
       [`%${query}%`]
-
     );
     res.json(result.rows);
   } catch (error) {
@@ -323,6 +296,7 @@ router.get('/search/:query', async (req, res) => {
   }
 });
 
+// Get reviews for a specific service
 router.get('/:serviceId/reviews', async (req, res) => {
   try {
       const { serviceId } = req.params;
@@ -347,6 +321,7 @@ router.get('/:serviceId/reviews', async (req, res) => {
   }
 });
 
+// Create a booking for a service
 router.post('/bookings', authenticateUser, async (req, res) => {
   try {
       const { serviceId, message } = req.body;
@@ -401,6 +376,7 @@ router.post('/bookings', authenticateUser, async (req, res) => {
   }
 });
 
+// Get bookings for a user
 router.get('/bookings/user', authenticateUser, async (req, res) => {
   try {
       const userId = req.user.id;
@@ -422,6 +398,7 @@ router.get('/bookings/user', authenticateUser, async (req, res) => {
   }
 });
 
+// Send a message in a chat room
 router.post('/messages', authenticateUser, async (req, res) => {
   try {
       const { chatRoomId, content } = req.body;
@@ -461,6 +438,7 @@ router.post('/messages', authenticateUser, async (req, res) => {
   }
 });
 
+// Get messages in a chat room
 router.get('/messages/:chatRoomId', authenticateUser, async (req, res) => {
   try {
       const { chatRoomId } = req.params;
@@ -492,6 +470,7 @@ router.get('/messages/:chatRoomId', authenticateUser, async (req, res) => {
   }
 });
 
+// Rate a service
 router.post('/ratings', authenticateUser, async (req, res) => {
   try {
       const { serviceId, rating, feedback } = req.body;
@@ -542,6 +521,7 @@ router.post('/ratings', authenticateUser, async (req, res) => {
   }
 });
 
+// Get notifications for a user
 router.get('/notifications', authenticateUser, async (req, res) => {
   try {
       const userId = req.user.id;
@@ -559,3 +539,4 @@ router.get('/notifications', authenticateUser, async (req, res) => {
 });
 
 module.exports = router;
+

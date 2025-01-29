@@ -2,31 +2,34 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Animated, ImageBackground } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
+// Sample data for delivery persons with their details and location
 export const deliveryPersons = [
     { id: '1', name: 'John Doe', rating: '4.5', image: 'https://via.placeholder.com/150', bio: 'Experienced and reliable.', location: { latitude: 34.8806, longitude: -1.3152 } },
-    { id: '2', name: 'Jane Smith', rating: '4.8', image: 'https://via.placeholder.com/150', bio: 'Quick and friendly.', location: { latitude: 34.8806, longitude: -1.3052 } }, // Different location
+    { id: '2', name: 'Jane Smith', rating: '4.8', image: 'https://via.placeholder.com/150', bio: 'Quick and friendly.', location: { latitude: 34.8806, longitude: -1.3052 } },
 ];
 
 const DeliveryScreen = ({ navigation }) => {
-    const [selectedId, setSelectedId] = useState(null);
-    const [selectedLocation, setSelectedLocation] = useState(null);
+    const [activePersonId, setActivePersonId] = useState(null); // Currently selected delivery person's ID
+    const [activePersonLocation, setActivePersonLocation] = useState(null); // Currently selected delivery person's location
 
-    const fadeAnim = React.useRef(new Animated.Value(0)).current;
+    const fadeAnimation = React.useRef(new Animated.Value(0)).current; // Animation for selected card
 
-    const handleSelect = (id, location) => {
-        setSelectedId(id);
-        setSelectedLocation(location);
-        Animated.timing(fadeAnim, {
+    // Handles selection of a delivery person card
+    const onSelectPerson = (id, location) => {
+        setActivePersonId(id);
+        setActivePersonLocation(location);
+        Animated.timing(fadeAnimation, {
             toValue: 1,
             duration: 300,
             useNativeDriver: true,
         }).start();
     };
 
+    // Renders each delivery person card with their details
     const renderDeliveryPerson = ({ item }) => (
         <TouchableOpacity
-            style={[styles.card, { opacity: selectedId === item.id ? fadeAnim : 1 }]}
-            onPress={() => handleSelect(item.id, item.location)}
+            style={[styles.card, { opacity: activePersonId === item.id ? fadeAnimation : 1 }]}
+            onPress={() => onSelectPerson(item.id, item.location)}
         >
             <Image source={{ uri: item.image }} style={styles.image} />
             <View style={styles.info}>
@@ -55,12 +58,12 @@ const DeliveryScreen = ({ navigation }) => {
                     contentContainerStyle={styles.list}
                 />
             </ImageBackground>
-            {selectedLocation && (
+            {activePersonLocation && (
                 <MapView
                     style={styles.map}
                     initialRegion={{
-                        latitude: selectedLocation.latitude,
-                        longitude: selectedLocation.longitude,
+                        latitude: activePersonLocation.latitude,
+                        longitude: activePersonLocation.longitude,
                         latitudeDelta: 0.0922, 
                         longitudeDelta: 0.0421,
                     }}
@@ -153,3 +156,4 @@ const styles = StyleSheet.create({
 });
 
 export default DeliveryScreen;
+

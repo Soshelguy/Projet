@@ -3,19 +3,30 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+/**
+ * NotificationsScreen component displays a list of notifications for the user.
+ * It fetches notifications from the server and provides functionality to mark them as read.
+ */
 const NotificationsScreen = ({ navigation }) => {
+  // State to store notifications
   const [notifications, setNotifications] = useState([]);
 
+  // Fetch notifications when the component mounts
   useEffect(() => {
     fetchNotifications();
   }, []);
 
+  /**
+   * Fetch notifications for the current user from the server.
+   */
   const fetchNotifications = async () => {
     try {
+      // Retrieve user data from AsyncStorage
       const userData = await AsyncStorage.getItem('userData');
       const { id } = JSON.parse(userData);
       
-      const response = await fetch(`https://8b7f-41-100-123-0.ngrok-free.app/api/notifications/user/${id}`);
+      // Fetch notifications from the server
+      const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/notifications/user/${id}`);
       const data = await response.json();
       setNotifications(data);
     } catch (error) {
@@ -23,9 +34,13 @@ const NotificationsScreen = ({ navigation }) => {
     }
   };
 
-  const markAsRead = async (notificationId) => {
+  /**
+   * Mark a specific notification as read.
+   * @param {number} notificationId - ID of the notification to be marked as read.
+   */
+  const markNotificationAsRead = async (notificationId) => {
     try {
-      await fetch(`https://8b7f-41-100-123-0.ngrok-free.app/api/notifications/${notificationId}/read`, {
+      await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/notifications/${notificationId}/read`, {
         method: 'PUT'
       });
       fetchNotifications();
@@ -34,7 +49,12 @@ const NotificationsScreen = ({ navigation }) => {
     }
   };
 
-  const getIcon = (type) => {
+  /**
+   * Get the icon name based on the notification type.
+   * @param {string} type - Type of the notification.
+   * @returns {string} - Icon name for the type.
+   */
+  const getNotificationIcon = (type) => {
     switch (type) {
       case 'message':
         return 'mail-outline';
@@ -47,13 +67,18 @@ const NotificationsScreen = ({ navigation }) => {
     }
   };
 
+  /**
+   * Render a single notification item.
+   * @param {object} item - Notification item data.
+   * @returns JSX element representing the notification item.
+   */
   const renderNotification = ({ item }) => (
     <TouchableOpacity 
       style={[styles.notificationItem, !item.read && styles.unread]}
-      onPress={() => markAsRead(item.id)}
+      onPress={() => markNotificationAsRead(item.id)}
     >
       <View style={styles.iconContainer}>
-        <Icon name={getIcon(item.type)} size={24} color="#1F654C" />
+        <Icon name={getNotificationIcon(item.type)} size={24} color="#1F654C" />
       </View>
       <View style={styles.contentContainer}>
         <Text style={styles.title}>{item.title}</Text>
@@ -77,6 +102,7 @@ const NotificationsScreen = ({ navigation }) => {
   );
 };
 
+// Styles for the component
 const styles = StyleSheet.create({
   container: {
     flex: 1,

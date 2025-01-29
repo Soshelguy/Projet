@@ -7,44 +7,33 @@ import {
   StyleSheet 
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { AppSettingsContext } from '../AppSettingsContext';
+import { AppSettingsContext } from '../AppSettingsContext'; // adjust the import path as necessary
 
-const mainCategories = [
-  { 
-    id: 'vehicles', 
-    name: 'Vehicles', 
-    icon: 'car-outline',
-    subcategories: ['Cars', 'Motorcycles', 'Trucks', 'Boats']
-  },
-  { 
-    id: 'electronics', 
-    name: 'Electronics', 
-    icon: 'laptop-outline',
-    subcategories: ['Phones', 'Computers', 'Home Appliances', 'Cameras']
-  },
-  { 
-    id: 'fashion', 
-    name: 'Fashion', 
-    icon: 'shirt-outline',
-    subcategories: ["Men's Clothing", "Women's Clothing", 'Shoes', 'Accessories']
-  },
-  { 
-    id: 'home', 
-    name: 'Home & Furniture', 
-    icon: 'home-outline',
-    subcategories: ['Furniture', 'Decor', 'Kitchen', 'Bedding']
-  },
-  { 
-    id: 'hobby', 
-    name: 'Hobbies', 
-    icon: 'game-controller-outline',
-    subcategories: ['Toys', 'Books', 'Sports', 'Musical Instruments']
-  }
-];
-
+/**
+ * AllCategoriesScreen
+ * 
+ * This screen displays a list of all main categories as cards with
+ * their respective subcategories. It also provides navigation to the
+ * CategoryDetailScreen when a category is selected.
+ * 
+ * @param {Object} props - The props passed to the component
+ * @param {Function} props.navigation - The navigation object
+ * 
+ * @returns {ReactElement} - The component
+ */
 const AllCategoriesScreen = ({ navigation }) => {
   const { darkMode } = useContext(AppSettingsContext);
 
+  /**
+   * renderCategoryItem
+   * 
+   * This function renders a single category item in the list.
+   * It takes an object with the category properties and renders a
+   * TouchableOpacity component with the category details.
+   * 
+   * @param {Object} item - The category item
+   * @returns {ReactElement} - The rendered item
+   */
   const renderCategoryItem = ({ item }) => (
     <TouchableOpacity 
       style={[
@@ -140,6 +129,11 @@ const AllCategoriesScreen = ({ navigation }) => {
   );
 };
 
+/**
+ * Styles
+ * 
+ * The styles used in the component
+ */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -222,3 +216,4 @@ const styles = StyleSheet.create({
 });
 
 export default AllCategoriesScreen;
+

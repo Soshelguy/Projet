@@ -15,7 +15,9 @@ import { useNavigation } from '@react-navigation/native';
 import Geolocation from 'react-native-geolocation-service';
 import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 
-const MAIN_CATEGORIES = [
+// Main categories data
+const CATEGORY_DATA = [
+  // Product category
   {
     id: 'products',
     name: 'Products',
@@ -57,6 +59,7 @@ const MAIN_CATEGORIES = [
       }
     ]
   },
+  // Services category
   {
     id: 'services',
     name: 'Services',
@@ -95,6 +98,7 @@ const MAIN_CATEGORIES = [
       }
     ]
   },
+  // Catering category
   {
     id: 'catering',
     name: 'Catering',
@@ -133,6 +137,7 @@ const MAIN_CATEGORIES = [
       }
     ]
   },
+  // Non-consumables category
   {
     id: 'non-consumables',
     name: 'Non-Consumables',
@@ -169,21 +174,18 @@ const MAIN_CATEGORIES = [
   }
 ];
 
-
-
-
 const HomeScreen = () => {
   const navigation = useNavigation();
-  const [location, setLocation] = useState(null);
+  const [userLocation, setUserLocation] = useState(null); // User's current location state
 
+  // Request location permission based on the platform
   async function requestLocationPermission() {
     if (Platform.OS === 'android') {
       const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         {
           title: 'Location Permission',
-          message:
-            'We need access to your location to show your current position.',
+          message: 'We need access to your location to show your current position.',
           buttonNeutral: 'Ask Me Later',
           buttonNegative: 'Cancel',
           buttonPositive: 'OK',
@@ -197,15 +199,15 @@ const HomeScreen = () => {
     return false;
   }
 
-  async function getAddressFromCoordinates(latitude, longitude) {
+  // Fetch address from latitude and longitude
+  async function fetchAddress(latitude, longitude) {
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
       );
       const json = await response.json();
       if (json.address) {
-        const city =
-          json.address.city || json.address.town || json.address.village;
+        const city = json.address.city || json.address.town || json.address.village;
         const country = json.address.country;
         return { city, country };
       }
@@ -214,14 +216,14 @@ const HomeScreen = () => {
     }
     return null;
   }
+
+  // Effect to handle location fetching on component mount
   useEffect(() => {
     (async () => {
       const hasPermission = await requestLocationPermission();
       if (!hasPermission) {
         console.log('Permission to access location was denied');
-        setLocation({
-          text: 'Location permission denied',
-        });
+        setUserLocation({ text: 'Location permission denied' });
         return;
       }
 
@@ -229,26 +231,24 @@ const HomeScreen = () => {
         async (position) => {
           const { latitude, longitude } = position.coords;
 
-          const address = await getAddressFromCoordinates(latitude, longitude);
+          const address = await fetchAddress(latitude, longitude);
 
-          setLocation({
+          setUserLocation({
             latitude,
             longitude,
-            text: address
-              ? `${address.city}, ${address.country}`
-              : 'Location found',
+            text: address ? `${address.city}, ${address.country}` : 'Location found',
           });
         },
         (error) => {
           console.log('Error getting location:', error);
-          setLocation({
-            text: 'Unable to retrieve location',
-          });
+          setUserLocation({ text: 'Unable to retrieve location' });
         },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
       );
     })();
   }, []);
+
+  // Render each category card
   const renderCategoryCard = ({ item }) => (
     <TouchableOpacity 
       style={[styles.categoryCard, { borderColor: item.color }]}
@@ -270,40 +270,40 @@ const HomeScreen = () => {
   return (
     <View style={styles.container}>
       {/* Location Map Section */}
-      {location && location.latitude && location.longitude ? (
+      {userLocation && userLocation.latitude && userLocation.longitude ? (
         <View style={styles.mapContainer}>
           <MapView
             style={styles.map}
             initialRegion={{
-              latitude: location.latitude,
-              longitude: location.longitude,
+              latitude: userLocation.latitude,
+              longitude: userLocation.longitude,
               latitudeDelta: 0.005,
               longitudeDelta: 0.005,
             }}
           >
             <Marker
               coordinate={{
-                latitude: location.latitude,
-                longitude: location.longitude,
+                latitude: userLocation.latitude,
+                longitude: userLocation.longitude,
               }}
               title="You are here"
             />
           </MapView>
           <View style={styles.locationTextContainer}>
             <Text style={styles.locationText}>
-              {location.text}
+              {userLocation.text}
             </Text>
           </View>
         </View>
       ) : (
         <Text style={styles.loadingText}>
-          {location && location.text ? location.text : 'Loading...'}
+          {userLocation && userLocation.text ? userLocation.text : 'Loading...'}
         </Text>
       )}
       {/* Categories Section */}
       <View style={styles.categoriesContainer}>
         <FlatList
-          data={MAIN_CATEGORIES}
+          data={CATEGORY_DATA}
           renderItem={renderCategoryCard}
           keyExtractor={(item) => item.id}
           numColumns={2}
@@ -320,7 +320,7 @@ const { width } = Dimensions.get('window');
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    marginTop:20,
+    marginTop: 20,
     backgroundColor: '#F5F5F5',
   },
   mapContainer: {
@@ -374,63 +374,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'black',
   },
-  headerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 15,
-    backgroundColor: 'white',
-  },
-  backButton: {
-    marginRight: 15,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  subcategoryList: {
-    padding: 10,
-  },
-  subcategoryCard: {
-    width: width * 0.45,
-    height: width * 0.35,
-    borderRadius: 15,
-    borderWidth: 1,
-    margin: 5,
-    padding: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'white',
-  },
-  subcategoryIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  subcategoryName: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: 'black',
-  },
-  subItemList: {
-    padding: 10,
-  },
-  subItemCard: {
-    width: width * 0.45,
-    height: width * 0.2,
-    borderRadius: 10,
-    borderWidth: 1,
-    margin: 5,
-    padding: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'white',
-  },
-  subItemName: {
-    fontSize: 14,
-    color: 'black',
+  loadingText: {
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 16,
+    color: 'gray',
   },
 });
+
 export default HomeScreen;

@@ -1,5 +1,19 @@
+/**
+ * SignUpScreen Component
+ * 
+ * This component renders a sign up form with email, password, and confirm password fields.
+ * After the user submits the form, it navigates to the UserOnboarding screen.
+ */
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, Alert } from 'react-native';
+import {
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    StyleSheet,
+    StatusBar,
+    Alert
+} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../AuthContext';
 
@@ -8,6 +22,10 @@ const SignUpScreen = ({ navigation }) => {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
+    /**
+     * Validates the form data and navigates to the UserOnboarding screen if valid.
+     * If not valid, shows an error alert.
+     */
     const handleContinue = () => {
         if (!email || !password || !confirmPassword) {
             Alert.alert("Error", "Please fill in all fields.");
@@ -79,6 +97,7 @@ const SignUpScreen = ({ navigation }) => {
         </View>
     );
 };
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,

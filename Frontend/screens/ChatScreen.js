@@ -1,34 +1,57 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-    View,
-    Text,
-    FlatList,
-    TextInput,
-    TouchableOpacity,
-    StyleSheet,
-    KeyboardAvoidingView,
-    Platform,
+import { 
+    View, 
+    Text, 
+    FlatList, 
+    TextInput, 
+    TouchableOpacity, 
+    KeyboardAvoidingView, 
+    Platform 
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+/**
+ * ChatScreen is a component that displays a chat conversation between
+ * the current user and a service provider.
+ * It fetches messages for a given booking and displays them in a FlatList.
+ * It also allows the user to send new messages.
+ * Fetching of messages is done every 5 seconds.
+ */
 const ChatScreen = ({ route, navigation }) => {
     const { bookingId, serviceId, providerId } = route.params;
-    const [messages, setMessages] = useState([]);
-    const [newMessage, setNewMessage] = useState('');
+
+    // Current user ID is stored in AsyncStorage
     const [currentUserId, setCurrentUserId] = useState(null);
+
+    // Messages are stored in the state
+    const [messages, setMessages] = useState([]);
+
+    // New message is stored in the state
+    const [newMessage, setNewMessage] = useState('');
+
+    // Reference to the FlatList
     const flatListRef = useRef();
+
+    // Booking details are stored in the state
     const [booking, setBooking] = useState(null);
 
+    // Fetch current user ID from AsyncStorage
     useEffect(() => {
         getCurrentUser();
+    }, []);
+
+    // Fetch messages and booking details when the component mounts
+    useEffect(() => {
         fetchMessages();
         fetchBookingDetails();
-        
+
+        // Fetch messages every 5 seconds
         const interval = setInterval(fetchMessages, 5000);
         return () => clearInterval(interval);
     }, []);
 
+    // Fetch current user ID from AsyncStorage
     const getCurrentUser = async () => {
         try {
             const userData = await AsyncStorage.getItem('userData');
@@ -41,9 +64,10 @@ const ChatScreen = ({ route, navigation }) => {
         }
     };
 
+    // Fetch booking details from the API
     const fetchBookingDetails = async () => {
         try {
-            const response = await fetch(`https://8b7f-41-100-123-0.ngrok-free.app/api/bookings/${bookingId}`);
+            const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/bookings/${bookingId}`);
             const data = await response.json();
             setBooking(data);
         } catch (error) {
@@ -51,14 +75,16 @@ const ChatScreen = ({ route, navigation }) => {
         }
     };
 
+    // Fetch messages from the API
     const fetchMessages = async () => {
         try {
-            const response = await fetch(`https://8b7f-41-100-123-0.ngrok-free.app/api/messages/booking/${bookingId}`);
+            const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/messages/booking/${bookingId}`);
             const data = await response.json();
             setMessages(data);
-            
+
+            // Mark messages as read
             if (currentUserId) {
-                await fetch('https://8b7f-41-100-123-0.ngrok-free.app/api/messages/read', {
+                await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/messages/read', {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -74,11 +100,12 @@ const ChatScreen = ({ route, navigation }) => {
         }
     };
 
+    // Send a new message to the API
     const sendMessage = async () => {
         if (!newMessage.trim()) return;
 
         try {
-            const response = await fetch('https://8b7f-41-100-123-0.ngrok-free.app/api/messages/send', {
+            const response = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/messages/send', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -100,6 +127,7 @@ const ChatScreen = ({ route, navigation }) => {
         }
     };
 
+    // Render a message
     const renderMessage = ({ item }) => {
         const isCurrentUser = item.sender_id === currentUserId;
         return (
@@ -116,9 +144,10 @@ const ChatScreen = ({ route, navigation }) => {
         );
     };
 
+    // Render the chat conversation
     return (
-        <KeyboardAvoidingView 
-            style={styles.container} 
+        <KeyboardAvoidingView
+            style={styles.container}
             behavior={Platform.OS === 'ios' ? 'padding' : null}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
         >
@@ -147,7 +176,7 @@ const ChatScreen = ({ route, navigation }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const styles = {
     container: {
         flex: 1,
         backgroundColor: '#fff'
@@ -223,5 +252,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center'
     }
-});
+};
+
 export default ChatScreen;
+

@@ -2,20 +2,26 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
+// ResetPasswordScreen component handles the logic and UI for resetting a user's password
 const ResetPasswordScreen = ({ navigation, route }) => {
+    // State variables for new password input
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
+    // Extracting the token from route parameters
     const { token } = route.params;
 
+    // Function to handle the password reset process
     const handleResetPassword = async () => {
+        // Check if the new password matches the confirmation password
         if (newPassword !== confirmPassword) {
             Alert.alert('Error', 'Passwords do not match.');
             return;
         }
 
         try {
-            const response = await fetch(`https://8b7f-41-100-123-0.ngrok-free.app/api/reset-password/${token}`, {
+            // Send a request to reset the password using the provided token
+            const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/reset-password/${token}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -23,16 +29,20 @@ const ResetPasswordScreen = ({ navigation, route }) => {
                 body: JSON.stringify({ newPassword }),
             });
 
+            // Handle response errors
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'Failed to reset password.');
             }
 
+            // Parse the response data
             const data = await response.json();
 
+            // Notify user of success and navigate to authentication screen
             Alert.alert('Success', 'Password has been reset successfully.');
             navigation.navigate('Auth');
         } catch (error) {
+            // Log error and show alert to the user
             console.error('Error resetting password:', error);
             Alert.alert('Error', error.message || 'Something went wrong. Please try again.');
         }

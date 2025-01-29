@@ -1,32 +1,42 @@
+/**
+ * Forgot Password Screen
+ * Allows user to request a password reset link via email
+ */
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, Alert } from 'react-native';
 
-const ForgotPasswordScreen = ({ navigation }) => {
-    const [email, setEmail] = useState('');
+/**
+ * Handles sending a password reset request to the API
+ * @param {string} email - User's email address
+ */
+const handleResetPassword = async (email) => {
+    try {
+        const response = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/forgot-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email }),
+        });
 
-    const handleResetPassword = async () => {
-        try {
-            const response = await fetch('https://8b7f-41-100-123-0.ngrok-free.app/api/forgot-password', { // Replace with your API URL
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email }),
-            });
+        const data = await response.json();
 
-            const data = await response.json();
-
-            if (response.ok) {
-                Alert.alert("Success", "Check your email for a password reset link.");
-                navigation.navigate('Auth'); 
-            } else {
-                Alert.alert("Error", data.message || "An error occurred. Please try again.");
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            Alert.alert("Error", "Something went wrong. Please try again.");
+        if (response.ok) {
+            Alert.alert("Success", "Check your email for a password reset link.");
+        } else {
+            Alert.alert("Error", data.message || "An error occurred. Please try again.");
         }
-    };
+    } catch (error) {
+        console.error('Error:', error);
+        Alert.alert("Error", "Something went wrong. Please try again.");
+    }
+};
+
+/**
+ * Forgot Password Screen Component
+ */
+const ForgotPasswordScreen = ({ navigation }) => {
+    const [userEmail, setUserEmail] = useState('');
 
     return (
         <View style={styles.container}>
@@ -34,7 +44,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
             <View style={styles.overlay}>
                 <Text style={styles.title}>Forgot Password</Text>
                 <Text style={styles.subtitle}>Enter your email to reset your password.</Text>
-                
+
                 {/* Email Input */}
                 <View style={styles.inputContainer}>
                     <TextInput 
@@ -43,15 +53,15 @@ const ForgotPasswordScreen = ({ navigation }) => {
                         placeholderTextColor="#B0B0B0"
                         keyboardType="email-address"
                         autoCapitalize="none"
-                        value={email}
-                        onChangeText={setEmail}
+                        value={userEmail}
+                        onChangeText={setUserEmail}
                     />
                 </View>
 
                 {/* Reset Password Button */}
                 <TouchableOpacity 
                     style={styles.button} 
-                    onPress={handleResetPassword}
+                    onPress={() => handleResetPassword(userEmail)}
                 >
                     <Text style={styles.buttonText}>Reset Password</Text>
                 </TouchableOpacity>
@@ -131,7 +141,7 @@ const styles = StyleSheet.create({
         color: '#424b54',
         fontSize: 14,
     },
-    footerText1: {
+    linkText: {
         color: '#009688',
         fontSize: 14,
         fontWeight: 'bold',
@@ -139,3 +149,4 @@ const styles = StyleSheet.create({
 });
 
 export default ForgotPasswordScreen;
+

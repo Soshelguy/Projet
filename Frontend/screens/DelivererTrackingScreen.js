@@ -1,23 +1,40 @@
+/**
+ * DelivererTrackingScreen.js
+ * 
+ * This screen shows a map of the user's location and the location of the selected deliverer.
+ * It fetches the deliverer's details from the backend when the screen is mounted.
+ * If the deliverer is found, it displays their name, contact, and a marker on the map
+ * at their location.
+ * If the deliverer is not found, it displays an error message.
+ * 
+ * @param {Object} route - The route object passed from the navigator.
+ * @param {String} route.params.delivererId - The id of the deliverer to track.
+ */
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import axios from 'axios';
 
 const DelivererTrackingScreen = ({ route }) => {
-    const { delivererId } = route.params;
-    const [deliverer, setDeliverer] = useState(null);
+    const delivererId = route.params.delivererId;
+    const [delivererDetails, setDelivererDetails] = useState(null);
     const [userLocation, setUserLocation] = useState({
-        latitude: 37.78825, 
+        latitude: 37.78825, // Default to SF
         longitude: -122.4324,
     });
 
+    /**
+     * Fetch the deliverer's details from the backend when the screen is mounted.
+     * If the deliverer is found, set the delivererDetails state to the response.
+     * If the deliverer is not found, log an error to the console.
+     */
     useEffect(() => {
-        axios.get(`https://8b7f-41-100-123-0.ngrok-free.app/deliverers/${delivererId}`)
+        axios.get(`https://cf8f-197-203-19-175.ngrok-free.app/deliverers/${delivererId}`)
             .then(response => {
-                setDeliverer(response.data);
+                setDelivererDetails(response.data);
             })
             .catch(error => {
-                console.error(error);
+                console.error(`Error fetching deliverer with id ${delivererId}`, error);
             });
     }, [delivererId]);
 
@@ -33,19 +50,19 @@ const DelivererTrackingScreen = ({ route }) => {
                 }}
             >
                 <Marker coordinate={userLocation} title="Your Location" />
-                {deliverer && (
+                {delivererDetails && (
                     <Marker
-                        coordinate={{ latitude: deliverer.latitude, longitude: deliverer.longitude }}
-                        title={deliverer.name}
+                        coordinate={{ latitude: delivererDetails.latitude, longitude: delivererDetails.longitude }}
+                        title={delivererDetails.name}
                     />
                 )}
             </MapView>
 
-            {deliverer && (
+            {delivererDetails && (
                 <View style={styles.details}>
                     <Text style={styles.header}>Deliverer Details</Text>
-                    <Text>Name: {deliverer.name}</Text>
-                    <Text>Contact: {deliverer.contact}</Text>
+                    <Text>Name: {delivererDetails.name}</Text>
+                    <Text>Contact: {delivererDetails.contact}</Text>
                 </View>
             )}
         </View>
@@ -71,3 +88,4 @@ const styles = StyleSheet.create({
 });
 
 export default DelivererTrackingScreen;
+

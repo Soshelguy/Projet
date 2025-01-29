@@ -1,22 +1,46 @@
+/**
+ * UserOnboardingScreen.js
+ * This screen is shown after the user completes the email and password registration
+ * It collects the user's full name, phone number, address, and profile image
+ * It sends a POST request to the server to register the user
+ * If the request is successful, it logs the user in and navigates to the main screen
+ * If the request fails, it shows an error message
+ * 
+ * @param {object} route - The route object from React Navigation
+ * @param {object} navigation - The navigation object from React Navigation
+ * @returns {ReactElement} - The UserOnboardingScreen component
+ */
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Image, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, Image, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'https://8b7f-41-100-123-0.ngrok-free.app';
+/**
+ * The API URL for the server
+ * @type {string}
+ */
+const API_URL = 'https://cf8f-197-203-19-175.ngrok-free.app';
 
+/**
+ * The UserOnboardingScreen component
+ * @param {object} props - The props object
+ * @returns {ReactElement} - The UserOnboardingScreen component
+ */
 const UserOnboardingScreen = ({ route, navigation }) => {
     const { tempCredentials } = route.params;
     const { login, generateToken } = useAuth();
-    const [formData, setFormData] = useState({
+    const [userFormData, setUserFormData] = useState({
         fullName: '',
         phone: '',
         address: '',
         profileImage: null,
     });
 
+    /**
+     * Launches the image picker to select a profile image
+     */
     const pickImage = async () => {
         const options = {
             mediaType: 'photo',
@@ -44,7 +68,7 @@ const UserOnboardingScreen = ({ route, navigation }) => {
                 });
     
                 try {
-                    setFormData(prev => ({
+                    setUserFormData(prev => ({
                         ...prev,
                         profileImage: imageUri // Store URI temporarily for display
                     }));
@@ -56,8 +80,11 @@ const UserOnboardingScreen = ({ route, navigation }) => {
         });
     };
     
+    /**
+     * Handles the form submission and sends a POST request to the server
+     */
     const handleSubmit = async () => {
-        if (!formData.fullName || !formData.phone || !formData.address) {
+        if (!userFormData.fullName || !userFormData.phone || !userFormData.address) {
             Alert.alert('Error', 'Please fill in all fields.');
             return;
         }
@@ -67,24 +94,23 @@ const UserOnboardingScreen = ({ route, navigation }) => {
             
             formDataObj.append('email', tempCredentials.email);
             formDataObj.append('password', tempCredentials.password);
-            formDataObj.append('fullName', formData.fullName);
-            formDataObj.append('phone', formData.phone);
-            formDataObj.append('address', formData.address);
+            formDataObj.append('fullName', userFormData.fullName);
+            formDataObj.append('phone', userFormData.phone);
+            formDataObj.append('address', userFormData.address);
     
-            if (formData.profileImage) {
-    const imageUri = formData.profileImage;
-    const filename = imageUri.split('/').pop();
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
+            if (userFormData.profileImage) {
+                const imageUri = userFormData.profileImage;
+                const filename = imageUri.split('/').pop();
+                const match = /\.(\w+)$/.exec(filename);
+                const type = match ? `image/${match[1]}` : 'image/jpeg';
 
-    formDataObj.append('profileImage', {
-        uri: imageUri,
-        name: filename,
-        type,
-    });
-}
-
-    
+                formDataObj.append('profileImage', {
+                    uri: imageUri,
+                    name: filename,
+                    type,
+                });
+            }
+            
             const response = await fetch(`${API_URL}/api/users/register`, {
                 method: 'POST',
                 headers: {
@@ -145,8 +171,8 @@ const UserOnboardingScreen = ({ route, navigation }) => {
             <Text style={styles.subtitle}>Let's get to know you better</Text>
 
             <TouchableOpacity style={styles.imageContainer} onPress={pickImage}>
-                {formData.profileImage ? (
-                    <Image source={{ uri: formData.profileImage }} style={styles.profileImage} />
+                {userFormData.profileImage ? (
+                    <Image source={{ uri: userFormData.profileImage }} style={styles.profileImage} />
                 ) : (
                     <View style={styles.placeholderImage}>
                         <Icon name="camera" size={40} color="#666" />
@@ -160,23 +186,23 @@ const UserOnboardingScreen = ({ route, navigation }) => {
                     style={styles.input}
                     placeholder="Full Name"
                     placeholderTextColor="#888888"
-                    value={formData.fullName}
-                    onChangeText={(text) => setFormData(prev => ({ ...prev, fullName: text }))}
+                    value={userFormData.fullName}
+                    onChangeText={(text) => setUserFormData(prev => ({ ...prev, fullName: text }))}
                 />
                 <TextInput
                     style={styles.input}
                     placeholder="Phone Number"
                     placeholderTextColor="#888888"
-                    value={formData.phone}
-                    onChangeText={(text) => setFormData(prev => ({ ...prev, phone: text }))}
+                    value={userFormData.phone}
+                    onChangeText={(text) => setUserFormData(prev => ({ ...prev, phone: text }))}
                     keyboardType="phone-pad"
                 />
                 <TextInput
                     style={[styles.input, styles.addressInput]}
                     placeholder="Address"
                     placeholderTextColor="#888888"
-                    value={formData.address}
-                    onChangeText={(text) => setFormData(prev => ({ ...prev, address: text }))}
+                    value={userFormData.address}
+                    onChangeText={(text) => setUserFormData(prev => ({ ...prev, address: text }))}
                     multiline
                 />
 
@@ -259,3 +285,5 @@ const styles = StyleSheet.create({
 });
 
 export default UserOnboardingScreen;
+
+

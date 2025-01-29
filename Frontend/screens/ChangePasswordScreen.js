@@ -2,29 +2,34 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-const API_URL = 'https://8b7f-41-100-123-0.ngrok-free.app';
+// Base URL for API requests
+const API_URL = 'https://cf8f-197-203-19-175.ngrok-free.app';
 
+// Main component for the Change Password screen
 const ChangePasswordScreen = ({ navigation }) => {
+    // State variables for form inputs and loading state
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [errors, setErrors] = useState({});
-    const [loading, setLoading] = useState(false);
+    const [formErrors, setFormErrors] = useState({});
+    const [isLoading, setIsLoading] = useState(false);
 
-    const validateForm = () => {
-        let newErrors = {};
-        if (!currentPassword) newErrors.currentPassword = "Current password is required";
-        if (!newPassword) newErrors.newPassword = "New password is required";
-        if (newPassword.length < 8) newErrors.newPassword = "Password must be at least 8 characters long";
-        if (newPassword !== confirmPassword) newErrors.confirmPassword = "Passwords do not match";
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+    // Function to validate the form input
+    const validateFormInput = () => {
+        let validationErrors = {};
+        if (!currentPassword) validationErrors.currentPassword = "Current password is required";
+        if (!newPassword) validationErrors.newPassword = "New password is required";
+        if (newPassword.length < 8) validationErrors.newPassword = "Password must be at least 8 characters long";
+        if (newPassword !== confirmPassword) validationErrors.confirmPassword = "Passwords do not match";
+        setFormErrors(validationErrors);
+        return Object.keys(validationErrors).length === 0;
     };
 
-    const handleChangePassword = async () => {
-        if (!validateForm()) return;
+    // Function to handle the password change logic
+    const handlePasswordChange = async () => {
+        if (!validateFormInput()) return;
 
-        setLoading(true);
+        setIsLoading(true);
         try {
             const response = await fetch(`${API_URL}/api/users/change-password`, {
                 method: 'POST',
@@ -48,7 +53,7 @@ const ChangePasswordScreen = ({ navigation }) => {
             console.error('Error changing password:', error);
             Alert.alert('Error', `Failed to change password: ${error.message}`);
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     };
 
@@ -75,7 +80,7 @@ const ChangePasswordScreen = ({ navigation }) => {
                         value={currentPassword}
                         onChangeText={setCurrentPassword}
                     />
-                    {errors.currentPassword && <Text style={styles.errorText}>{errors.currentPassword}</Text>}
+                    {formErrors.currentPassword && <Text style={styles.errorText}>{formErrors.currentPassword}</Text>}
 
                     <TextInput
                         style={styles.input}
@@ -85,7 +90,7 @@ const ChangePasswordScreen = ({ navigation }) => {
                         value={newPassword}
                         onChangeText={setNewPassword}
                     />
-                    {errors.newPassword && <Text style={styles.errorText}>{errors.newPassword}</Text>}
+                    {formErrors.newPassword && <Text style={styles.errorText}>{formErrors.newPassword}</Text>}
 
                     <TextInput
                         style={styles.input}
@@ -95,15 +100,15 @@ const ChangePasswordScreen = ({ navigation }) => {
                         value={confirmPassword}
                         onChangeText={setConfirmPassword}
                     />
-                    {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
+                    {formErrors.confirmPassword && <Text style={styles.errorText}>{formErrors.confirmPassword}</Text>}
 
                     <TouchableOpacity
                         style={styles.changePasswordButton}
-                        onPress={handleChangePassword}
-                        disabled={loading}
+                        onPress={handlePasswordChange}
+                        disabled={isLoading}
                     >
                         <Text style={styles.changePasswordButtonText}>
-                            {loading ? 'Changing...' : 'Change Password'}
+                            {isLoading ? 'Changing...' : 'Change Password'}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -112,6 +117,7 @@ const ChangePasswordScreen = ({ navigation }) => {
     );
 };
 
+// Styles for the component
 const styles = StyleSheet.create({
     container: {
         flex: 1,

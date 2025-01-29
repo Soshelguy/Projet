@@ -1,23 +1,27 @@
-
-import React, { useContext, useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  FlatList, 
-  StyleSheet, 
-  Dimensions 
-} from 'react-native';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
+import React from 'react';
+import { View, Text, TouchableOpacity, FlatList, StyleSheet, useWindowDimensions } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
 
+/**
+ * CategoryDetailScreen
+ * 
+ * This screen displays a list of subcategories for the selected category.
+ * It also provides navigation to the SubcategoryScreen when a subcategory is selected.
+ * 
+ * @param {Object} props - The props passed to the component
+ * @param {Object} props.route - The route object containing the category info
+ * @param {Object} props.navigation - The navigation object
+ * 
+ * @returns {ReactElement} - The component
+ */
 const CategoryDetailScreen = ({ route, navigation }) => {
   const { category } = route.params;
+  const { width } = useWindowDimensions();
 
+  // Render a subcategory card with its name and icon
   const renderSubcategoryCard = ({ item }) => (
     <TouchableOpacity 
-      style={[styles.subcategoryCard, { borderColor: category.color }]}
+      style={[styles.subcategoryCard, { borderColor: category.color, width: width * 0.45, height: width * 0.35 }]}
       onPress={() => navigation.navigate('SubcategoryScreen', { 
         parentCategory: category,
         subcategory: item 
@@ -54,85 +58,37 @@ const CategoryDetailScreen = ({ route, navigation }) => {
     </View>
   );
 };
-const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
+  // Container for the screen
   container: {
     flex: 1,
-    marginTop:20,
+    marginTop: 20,
     backgroundColor: '#F5F5F5',
   },
-  mapContainer: {
-    height: width * 0.6,
-    position: 'relative',
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  locationTextContainer: {
-    position: 'absolute',
-    bottom: 10,
-    left: 10,
-    right: 10,
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    padding: 10,
-    borderRadius: 10,
-  },
-  locationText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  categoriesContainer: {
-    flex: 1,
-    padding: 10,
-  },
-  categoryList: {
-    justifyContent: 'space-between',
-  },
-  categoryCard: {
-    width: width * 0.45,
-    height: width * 0.4,
-    borderRadius: 15,
-    borderWidth: 1,
-    margin: 5,
-    padding: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'white',
-  },
-  categoryIconContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  categoryName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: 'black',
-  },
+
+  // Header container
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 15,
     backgroundColor: 'white',
   },
+  // Back button
   backButton: {
     marginRight: 15,
   },
+  // Header title
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
   },
+  // Subcategory list container
   subcategoryList: {
     padding: 10,
   },
+  // Subcategory card
   subcategoryCard: {
-    width: width * 0.45,
-    height: width * 0.35,
     borderRadius: 15,
     borderWidth: 1,
     margin: 5,
@@ -141,6 +97,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'white',
   },
+  // Subcategory icon container
   subcategoryIconContainer: {
     width: 60,
     height: 60,
@@ -149,29 +106,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 10,
   },
+  // Subcategory name text
   subcategoryName: {
     fontSize: 14,
     fontWeight: 'bold',
     color: 'black',
   },
-  subItemList: {
-    padding: 10,
-  },
-  subItemCard: {
-    width: width * 0.45,
-    height: width * 0.2,
-    borderRadius: 10,
-    borderWidth: 1,
-    margin: 5,
-    padding: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'white',
-  },
-  subItemName: {
-    fontSize: 14,
-    color: 'black',
-  },
 });
 
 export default CategoryDetailScreen;
+

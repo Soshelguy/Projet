@@ -1,3 +1,8 @@
+/**
+ * ServicesScreen component
+ * This component displays a list of services and allows the user to filter by category
+ * and search for services by name
+ */
 import React, { useState, useContext, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, Image, Dimensions, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -6,13 +11,22 @@ import { AppSettingsContext } from '../AppSettingsContext';
 
 const { width } = Dimensions.get('window');
 
+/**
+ * ServicesScreen component
+ * @param {object} props - component props
+ * @param {function} props.navigation - navigation function
+ * @param {object} props.route - route object
+ */
 const ServicesScreen = ({ navigation, route }) => {
     const { darkMode } = useContext(AppSettingsContext);
+
+    // State variables
     const [services, setServices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState(0);
 
+    // Categories data
     const categories = [
         { id: 0, name: 'All', icon: 'apps-outline' },
         ...(route.params?.categories || []).filter(cat => cat.id !== 0),
@@ -30,10 +44,11 @@ const ServicesScreen = ({ navigation, route }) => {
         { id: 12, name: 'Repairs', icon: 'construct-outline' },
     ];
 
+    // Fetch services from API
     useEffect(() => {
         const fetchServices = async () => {
             try {
-                const response = await fetch('https://8b7f-41-100-123-0.ngrok-free.app/api/services', {
+                const response = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/services', {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/json',
@@ -58,12 +73,14 @@ const ServicesScreen = ({ navigation, route }) => {
         fetchServices();
     }, []);
 
+    // Filter services by category and search query
     const filteredServices = services.filter(service => 
         service.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
         (selectedCategory === 0 || service.category === categories[selectedCategory].name)
     );
 
     
+    // Render category item
     const renderCategory = ({ item }) => (
         <TouchableOpacity 
             style={styles.categoryCard}
@@ -94,6 +111,7 @@ const ServicesScreen = ({ navigation, route }) => {
     );
 
 
+    // Render service item
     const renderService = ({ item }) => (
         <TouchableOpacity 
             style={[styles.serviceCard, darkMode && styles.darkModeServiceCard]}
@@ -132,6 +150,7 @@ const ServicesScreen = ({ navigation, route }) => {
     );
 
 
+    // Loading indicator
     if (loading) {
         return (
             <View style={[styles.container,darkMode && styles.darkModeContainer, styles.centerContent]}>

@@ -1,3 +1,7 @@
+/**
+ * This file contains endpoints for validating JSON Web Tokens (JWTs) and generating new ones.
+ */
+
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
@@ -5,6 +9,9 @@ const { Pool } = require('pg');
 const jwt = require('jsonwebtoken');
 const { generateToken, SECRET_KEY } = require('../utils/token');
 
+/**
+ * Connect to the PostgreSQL database.
+ */
 const pool = new Pool({
     user: 'postgres', 
     host: 'localhost', 
@@ -13,7 +20,12 @@ const pool = new Pool({
     port: 5432, 
 });
 
-// Middleware to verify token
+/**
+ * Middleware to verify token.
+ * This middleware takes in a request and a response and checks if the token is valid.
+ * If the token is valid, it sets the user property on the request object to the user ID and email.
+ * If the token is invalid, it sends a 403 status code with an error message.
+ */
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -22,12 +34,19 @@ const authenticateToken = (req, res, next) => {
   
     jwt.verify(token, SECRET_KEY, (err, user) => {
       if (err) return res.status(403).json({ error: 'Invalid or expired token' });
-      req.user = { userId: user.userId }; // <--- Change this line
+      req.user = { userId: user.userId, email: user.email }; // <--- Change this line
       next();
     });
   };
 
-// Token Generation Route
+/**
+ * Token Generation Route
+ * This endpoint takes in a user ID and email and generates a new token.
+ * The token is valid for 1 hour.
+ * If the user ID and email are not provided, it sends a 400 status code with an error message.
+ * If the user is not found, it sends a 404 status code with an error message.
+ * If there is an error generating the token, it sends a 500 status code with an error message.
+ */
 /*router.post('/generate-token', async (req, res) => {
     try {
         const { userId, email } = req.body;
@@ -56,7 +75,12 @@ const authenticateToken = (req, res, next) => {
     }
 });*/
 
-// Token Validation Route
+/**
+ * Token Validation Route
+ * This endpoint takes in a token and verifies it.
+ * If the token is valid, it sends a JSON object with a valid property set to true and the user ID and email.
+ * If the token is invalid, it sends a 403 status code with an error message.
+ */
 router.post('/validate-token', authenticateToken, (req, res) => {
     // If the middleware passes, the token is valid
     res.json({ 
@@ -66,6 +90,14 @@ router.post('/validate-token', authenticateToken, (req, res) => {
     });
 });
 
+/**
+ * Signup Route
+ * This endpoint takes in an email, password, name, address, and phone number and creates a new user.
+ * It also generates a token immediately after signup.
+ * If the email is already taken, it sends a 400 status code with an error message.
+ * If there is an error generating the token, it sends a 500 status code with an error message.
+ * If there is an error creating the user, it sends a 500 status code with an error message.
+ */
 router.post('/signup', async (req, res) => {
     const { email, password, name = '', address = '', phone_number = '' } = req.body;
     const client = await pool.connect();

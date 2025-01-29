@@ -5,9 +5,10 @@ import CustomMarker from './CustomMarker';
 import { deliveryPersons } from '../screens/DeliveryScreen'; 
 
 const OrderTrackingScreen = () => {
-    const [loading, setLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true); // State to manage loading indicator
 
-    const initialRegion = {
+    // Initial region for the map view, centered around a specific location
+    const mapInitialRegion = {
         latitude: 34.8806, 
         longitude: -1.3152, 
         latitudeDelta: 0.0922,
@@ -15,17 +16,21 @@ const OrderTrackingScreen = () => {
     };
 
     useEffect(() => {
-        setTimeout(() => setLoading(false), 1000); 
+        // Simulate a network request or heavy computation
+        const timer = setTimeout(() => setIsLoading(false), 1000);
+        return () => clearTimeout(timer); // Cleanup the timer on component unmount
     }, []);
 
     return (
         <View style={styles.container}>
-            {loading ? (
+            {isLoading ? (
+                // Show loading indicator while data is being "fetched"
                 <ActivityIndicator size="large" color="#0000ff" style={styles.loader} />
             ) : (
+                // Display the map with markers for each delivery person once loading is complete
                 <MapView
                     style={styles.map}
-                    initialRegion={initialRegion}
+                    initialRegion={mapInitialRegion}
                 >
                     {deliveryPersons.map((person) => (
                         <CustomMarker
@@ -47,7 +52,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     map: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFillObject, // Make the map fill the container
     },
     loader: {
         position: 'absolute',
@@ -56,3 +61,4 @@ const styles = StyleSheet.create({
 });
 
 export default OrderTrackingScreen;
+

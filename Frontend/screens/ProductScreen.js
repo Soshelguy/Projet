@@ -6,23 +6,29 @@ import { CartContext } from '../CartContext';
 import { AppSettingsContext } from '../AppSettingsContext';
 
 const ProductScreen = ({ route, navigation }) => {
+    // Extract productId from route parameters
     const { productId } = route.params;
-    const [product, setProduct] = useState(null);
-    const [quantity, setQuantity] = useState(1);
-    const [isFavorite, setIsFavorite] = useState(false);
-    const [loading, setLoading] = useState(true);
-    const [similarProducts, setSimilarProducts] = useState([]);
+
+    // State hooks for managing product details, quantity, favorites, loading status, and similar products
+    const [productDetails, setProductDetails] = useState(null);
+    const [productQuantity, setProductQuantity] = useState(1);
+    const [favoriteStatus, setFavoriteStatus] = useState(false);
+    const [isLoading, setLoading] = useState(true);
+    const [relatedProducts, setRelatedProducts] = useState([]);
+
+    // Context hooks for cart operations and app settings
     const { addToCart, cartItems } = useContext(CartContext);
     const { darkMode } = useContext(AppSettingsContext);
 
     useEffect(() => {
-        const fetchProduct = async () => {
+        // Fetch product details and similar products on component mount
+        const fetchProductDetails = async () => {
             try {
-                const response = await fetch(`https://8b7f-41-100-123-0.ngrok-free.app/api/products/${productId}`);
+                const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/products/${productId}`);
                 const data = await response.json();
                 if (response.ok) {
-                    setProduct(data);
-                    await fetchSimilarProducts(data.id);
+                    setProductDetails(data);
+                    await fetchRelatedProducts(data.id);
                 } else {
                     console.error('Error fetching product:', data.message);
                 }
@@ -33,12 +39,12 @@ const ProductScreen = ({ route, navigation }) => {
             }
         };
 
-        const fetchSimilarProducts = async (productId) => {
+        const fetchRelatedProducts = async (productId) => {
             try {
-                const response = await fetch(`https://8b7f-41-100-123-0.ngrok-free.app/api/products/similar/${productId}`);
+                const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/products/similar/${productId}`);
                 const data = await response.json();
                 if (response.ok) {
-                    setSimilarProducts(data);
+                    setRelatedProducts(data);
                 } else {
                     console.error('Error fetching similar products:', data.message);
                 }
@@ -47,25 +53,29 @@ const ProductScreen = ({ route, navigation }) => {
             }
         };
 
-        fetchProduct();
+        fetchProductDetails();
     }, [productId]);
 
-    const handleQuantityChange = (value) => {
+    // Update product quantity ensuring it remains positive
+    const updateQuantity = (value) => {
         if (value > 0) {
-            setQuantity(value);
+            setProductQuantity(value);
         }
     };
 
-    const toggleFavorite = () => {
-        setIsFavorite(!isFavorite);
+    // Toggle favorite status of the product
+    const toggleFavoriteStatus = () => {
+        setFavoriteStatus(!favoriteStatus);
     };
 
-    const handleAddToCart = () => {
-        addToCart({ ...product, quantity });
+    // Add product to cart and navigate to OrderSummaryScreen
+    const addProductToCart = () => {
+        addToCart({ ...productDetails, quantity: productQuantity });
         navigation.navigate('OrderSummaryScreen');
     };
 
-    const renderStars = (rating) => {
+    // Render product rating stars
+    const renderProductRating = (rating) => {
         const fullStars = Math.floor(rating);
         const hasHalfStar = rating % 1 !== 0;
         const stars = [];
@@ -83,7 +93,8 @@ const ProductScreen = ({ route, navigation }) => {
         return stars;
     };
 
-    if (loading) {
+    // Show loading indicator while fetching product data
+    if (isLoading) {
         return <ActivityIndicator 
             size="large" 
             color={darkMode ? '#D9C49D' : '#5B8A62'} 
@@ -93,13 +104,13 @@ const ProductScreen = ({ route, navigation }) => {
 
     return (
         <SafeAreaView style={styles.container}>
-            {product && (
+            {productDetails && (
                 <>
                     <View style={styles.header}>
                         <TouchableOpacity onPress={() => navigation.goBack()}>
                             <Icon name="arrow-back" size={24} color="#A5F1E9" />
                         </TouchableOpacity>
-                        <Text style={styles.headerTitle}>{product.name}</Text>
+                        <Text style={styles.headerTitle}>{productDetails.name}</Text>
                         <TouchableOpacity onPress={() => navigation.navigate('OrderSummaryScreen')}>
                             <Icon name="cart-outline" size={24} color="#A5F1E9" />
                             {Object.keys(cartItems).length > 0 && (
@@ -111,38 +122,38 @@ const ProductScreen = ({ route, navigation }) => {
                     </View>
 
                     <ScrollView contentContainerStyle={styles.scrollContainer}>
-                        <Image source={{ uri: product.img }} style={styles.productImage} />
+                        <Image source={{ uri: productDetails.img }} style={styles.productImage} />
                         <View style={styles.productInfo}>
                             <View style={styles.nameAndFavorite}>
-                                <Text style={styles.productName}>{product.name}</Text>
-                                <TouchableOpacity onPress={toggleFavorite}>
-                                    <Icon name={isFavorite ? "heart" : "heart-outline"} size={24} color="#A5F1E9" />
+                                <Text style={styles.productName}>{productDetails.name}</Text>
+                                <TouchableOpacity onPress={toggleFavoriteStatus}>
+                                    <Icon name={favoriteStatus ? "heart" : "heart-outline"} size={24} color="#A5F1E9" />
                                 </TouchableOpacity>
                             </View>
-                            <Text style={styles.productWeight}>{product.weight}</Text>
-                            <Text style={styles.productPrice}>{product.price} Dz</Text>
+                            <Text style={styles.productWeight}>{productDetails.weight}</Text>
+                            <Text style={styles.productPrice}>{productDetails.price} Dz</Text>
                             <View style={styles.ratingContainer}>
-                                {renderStars(product.rating || 0)}
-                                <Text style={styles.ratingText}>({product.rating || 0})</Text>
+                                {renderProductRating(productDetails.rating || 0)}
+                                <Text style={styles.ratingText}>({productDetails.rating || 0})</Text>
                             </View>
 
                             <View style={styles.quantityContainer}>
-                                <TouchableOpacity onPress={() => handleQuantityChange(quantity - 1)} style={styles.quantityButton}>
+                                <TouchableOpacity onPress={() => updateQuantity(productQuantity - 1)} style={styles.quantityButton}>
                                     <Text style={styles.quantityButtonText}>-</Text>
                                 </TouchableOpacity>
-                                <Text style={styles.quantityText}>{quantity}</Text>
-                                <TouchableOpacity onPress={() => handleQuantityChange(quantity + 1)} style={styles.quantityButton}>
+                                <Text style={styles.quantityText}>{productQuantity}</Text>
+                                <TouchableOpacity onPress={() => updateQuantity(productQuantity + 1)} style={styles.quantityButton}>
                                     <Text style={styles.quantityButtonText}>+</Text>
                                 </TouchableOpacity>
                             </View>
 
-                            <TouchableOpacity style={styles.addToCartButton} onPress={handleAddToCart}>
+                            <TouchableOpacity style={styles.addToCartButton} onPress={addProductToCart}>
                                 <Text style={styles.addToCartButtonText}>Add to Cart</Text>
                             </TouchableOpacity>
 
                             <Text style={styles.similarProductsTitle}>Similar Products</Text>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.similarProductsContainer}>
-                                {similarProducts.map((item) => (
+                                {relatedProducts.map((item) => (
                                     <TouchableOpacity 
                                         key={item.id} 
                                         style={styles.similarProductCard} 

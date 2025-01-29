@@ -1,62 +1,74 @@
 import React, { createContext, useContext, useState } from 'react';
 
+// Create a context for the cart
 export const CartContext = createContext();
 
+// Provide the cart context to its children
 export const CartProvider = ({ children }) => {
+  // State to store items in the cart, using product IDs as keys
   const [cartItems, setCartItems] = useState({});
-  const [cartCount, setCartCount] = useState(0);
+  // State to store the count of distinct product types in the cart
+  const [productTypeCount, setProductTypeCount] = useState(0);
 
-  const addToCart = (product) => {
-    setCartItems((prev) => {
-      const currentItem = prev[product.id] || { ...product, quantity: 0, price: product.price.toString() };
+  // Add a product to the cart or increase its quantity if already present
+  const addProduct = (product) => {
+    setCartItems((currentItems) => {
+      const existingItem = currentItems[product.id] || { ...product, quantity: 0, price: product.price.toString() };
       const updatedItems = {
-        ...prev,
-        [product.id]: { ...currentItem, quantity: currentItem.quantity + 1 }
+        ...currentItems,
+        [product.id]: { ...existingItem, quantity: existingItem.quantity + 1 }
       };
 
-      if (currentItem.quantity === 0) {
-        setCartCount((prevCount) => prevCount + 1);
+      // Increment productTypeCount if the product is newly added
+      if (existingItem.quantity === 0) {
+        setProductTypeCount((count) => count + 1);
       }
 
       return updatedItems;
     });
   };
 
-  const removeFromCart = (productId) => {
-    setCartItems((prev) => {
-      if (prev[productId] && prev[productId].quantity > 0) {
+  // Reduce the quantity of a product in the cart or remove it if quantity is zero
+  const removeProduct = (productId) => {
+    setCartItems((currentItems) => {
+      if (currentItems[productId] && currentItems[productId].quantity > 0) {
         const updatedItems = {
-          ...prev,
-          [productId]: { ...prev[productId], quantity: prev[productId].quantity - 1 }
+          ...currentItems,
+          [productId]: { ...currentItems[productId], quantity: currentItems[productId].quantity - 1 }
         };
 
+        // Remove the product entirely if its quantity reaches zero
         if (updatedItems[productId].quantity === 0) {
           delete updatedItems[productId];
-          setCartCount((prevCount) => prevCount - 1);
+          setProductTypeCount((count) => count - 1);
         }
 
         return updatedItems;
       }
-      return prev;
+      return currentItems;
     });
   };
 
-  const removeEntireItem = (productId) => {
-    setCartItems((prev) => {
-      const updatedItems = { ...prev };
-      delete updatedItems[productId];
-      setCartCount((prevCount) => prevCount - 1);
+  // Remove a product entirely from the cart
+  const removeProductCompletely = (productId) => {
+    setCartItems((currentItems) => {
+      const updatedItems = { ...currentItems };
+      if (updatedItems[productId]) {
+        delete updatedItems[productId];
+        setProductTypeCount((count) => count - 1);
+      }
       return updatedItems;
     });
   };
 
   return (
-    <CartContext.Provider value={{ cartItems, cartCount, addToCart, removeFromCart, removeEntireItem }}>
+    <CartContext.Provider value={{ cartItems, productTypeCount, addProduct, removeProduct, removeProductCompletely }}>
       {children}
     </CartContext.Provider>
   );
 };
 
+// Custom hook to access the cart context
 export const useCart = () => {
   return useContext(CartContext);
 };

@@ -1,26 +1,39 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { View, Text, FlatList, Image, TouchableOpacity, Dimensions, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
+import { 
+  View, 
+  Text, 
+  FlatList, 
+  Image, 
+  TouchableOpacity, 
+  Dimensions, 
+  TextInput, 
+  StyleSheet, 
+  ActivityIndicator 
+} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Picker } from '@react-native-picker/picker';
 import { useCart } from '../CartContext';
 import { AppSettingsContext } from '../AppSettingsContext';
 import { BlurView } from '@react-native-community/blur';
+
 const { width } = Dimensions.get('window');
 
 const AllProductsScreen = ({ navigation }) => {
   const { darkMode } = useContext(AppSettingsContext);
+  const { cartCount, productQuantities = {}, addToCart, removeFromCart } = useCart();
+  
+  // State variables for managing products and UI states
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [selectedFilter, setSelectedFilter] = useState('All');
-  const [loading, setLoading] = useState(true);  
-  const [error, setError] = useState(null);  
-  const BACKEND_URL = 'https://8b7f-41-100-123-0.ngrok-free.app'; 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [activeFilter, setActiveFilter] = useState('All');
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
 
-  const { cartCount, productQuantities = {}, addToCart, removeFromCart } = useCart(); 
+  const API_BASE_URL = 'https://cf8f-197-203-19-175.ngrok-free.app'; 
 
-  const categories = [
+  const categoryList = [
     'All', 'Meats', 'Vege', 'Fruits', 'Breads', 'Dairy', 'Snacks', 'Drinks'
   ];
 
@@ -34,10 +47,11 @@ const AllProductsScreen = ({ navigation }) => {
     { label: 'New Arrivals', value: 'NewArrivals' },
   ];
 
+  // Fetch products from backend API
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await fetch('https://8b7f-41-100-123-0.ngrok-free.app0/api/products');
+        const response = await fetch(`${API_BASE_URL}/api/products`);
         if (!response.ok) {
           throw new Error('Error fetching products');
         }
@@ -49,28 +63,30 @@ const AllProductsScreen = ({ navigation }) => {
         setFilteredProducts(data);
       } catch (error) {
         console.error('Error fetching products:', error.message);
-        setError(error.message);
+        setFetchError(error.message);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
     
     fetchProducts();
   }, []);
 
+  // Re-filter products whenever search, category, or filter changes
   useEffect(() => {
     filterProducts();
-  }, [searchQuery, selectedCategory, selectedFilter, products]);    
+  }, [searchTerm, activeCategory, activeFilter, products]);
 
+  // Function to filter products based on search, category, and filter criteria
   const filterProducts = () => {
     if (!products || products.length === 0) return;
 
     let filtered = products.filter((product) => 
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      (selectedCategory === 'All' || product.category === selectedCategory)
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+      (activeCategory === 'All' || product.category === activeCategory)
     );
 
-    switch (selectedFilter) {
+    switch (activeFilter) {
       case 'PriceLowToHigh':
         filtered.sort((a, b) => a.price - b.price);
         break;
@@ -94,70 +110,72 @@ const AllProductsScreen = ({ navigation }) => {
     setFilteredProducts(filtered);
   };
 
-  if (loading) {
+  // Render loading indicator
+  if (isLoading) {
     return (
-      <View style={[styles.container,darkMode && styles.darkModeContainer, styles.centerContent]}>
-            <ActivityIndicator size="large"  color={darkMode ? '#D9C49D' : '#1E2541'}  />
-        </View>
+      <View style={[styles.container, darkMode && styles.darkModeContainer, styles.centerContent]}>
+        <ActivityIndicator size="large" color={darkMode ? '#D9C49D' : '#1E2541'} />
+      </View>
     );
-}
-
-  if (error) {
-    return <View style={styles.centerContainer}><Text>Error: {error}</Text></View>;
   }
 
+  // Render error message if data fetching fails
+  if (fetchError) {
+    return <View style={styles.centerContainer}><Text>Error: {fetchError}</Text></View>;
+  }
+
+  // Render individual product card
   const renderProduct = ({ item }) => (
     <TouchableOpacity 
-    style={[styles.productCard, darkMode && styles.darkModeProductCard]}
-    onPress={() => navigation.navigate('ProductScreen', {
+      style={[styles.productCard, darkMode && styles.darkModeProductCard]}
+      onPress={() => navigation.navigate('ProductScreen', {
         productId: item.id,
         name: item.name,
         price: item.price.toString(),
-        image: `${BACKEND_URL}${item.image}`, // Pass full image URL
+        image: `${API_BASE_URL}${item.image}`, // Pass full image URL
       })}
     >
-      <Image source={{ uri: `${BACKEND_URL}${item.image}` || 'default-image-url' }} style={styles.productImage} />
+      <Image source={{ uri: `${API_BASE_URL}${item.image}` || 'default-image-url' }} style={styles.productImage} />
       <BlurView 
-  intensity={darkMode ? 0 : 20} 
-  tint={darkMode ? "dark" : "light"} 
-  style={styles.productInfo}
->
-  <Text 
-    style={[styles.productName, darkMode && styles.darkModeText]} 
-    numberOfLines={1}
-  >
-    {item.name}
-  </Text>
-  <Text 
-    style={[styles.productWeight, darkMode && styles.darkModeSubtext]} 
-    numberOfLines={1}
-  >
-    {item.weight}
-  </Text>
-  <View style={styles.productFooter}>
-    <Text 
-      style={[styles.productPrice, darkMode && styles.darkModePriceText]}
-    >
-      {item.price ? `${item.price} Dz` : 'Price not available'}
-    </Text>
-    {productQuantities[item.id] ? (
-      <View style={styles.quantityContainer}>
-        <TouchableOpacity style={styles.quantityButton} onPress={() => removeFromCart(item.id)}>
-          <Text style={styles.quantityButtonText}>-</Text>
-        </TouchableOpacity>
-        <Text style={styles.quantityText}>{productQuantities[item.id]}</Text>
-        <TouchableOpacity style={styles.quantityButton} onPress={() => addToCart(item)}>
-          <Text style={styles.quantityButtonText}>+</Text>
-        </TouchableOpacity>
-      </View>
-    ) : (
-      <TouchableOpacity style={styles.addButton} onPress={() => addToCart(item)}>
-        <Text style={styles.addButtonText}>+</Text>
-      </TouchableOpacity>
-    )}
-  </View>
-</BlurView>
-
+        intensity={darkMode ? 0 : 20} 
+        tint={darkMode ? "dark" : "light"} 
+        style={styles.productInfo}
+      >
+        <Text 
+          style={[styles.productName, darkMode && styles.darkModeText]} 
+          numberOfLines={1}
+        >
+          {item.name}
+        </Text>
+        <Text 
+          style={[styles.productWeight, darkMode && styles.darkModeSubtext]} 
+          numberOfLines={1}
+        >
+          {item.weight}
+        </Text>
+        <View style={styles.productFooter}>
+          <Text 
+            style={[styles.productPrice, darkMode && styles.darkModePriceText]}
+          >
+            {item.price ? `${item.price} Dz` : 'Price not available'}
+          </Text>
+          {productQuantities[item.id] ? (
+            <View style={styles.quantityContainer}>
+              <TouchableOpacity style={styles.quantityButton} onPress={() => removeFromCart(item.id)}>
+                <Text style={styles.quantityButtonText}>-</Text>
+              </TouchableOpacity>
+              <Text style={styles.quantityText}>{productQuantities[item.id]}</Text>
+              <TouchableOpacity style={styles.quantityButton} onPress={() => addToCart(item)}>
+                <Text style={styles.quantityButtonText}>+</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.addButton} onPress={() => addToCart(item)}>
+              <Text style={styles.addButtonText}>+</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </BlurView>
     </TouchableOpacity>
   );
 
@@ -165,16 +183,16 @@ const AllProductsScreen = ({ navigation }) => {
     <View style={[styles.container, darkMode && styles.darkModeContainer]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color={darkMode ? '#D9C49D' : '#1E2541'}   />
+          <Icon name="arrow-back" size={24} color={darkMode ? '#D9C49D' : '#1E2541'} />
         </TouchableOpacity>
         <Text style={styles.headerTitle && styles.darkModeHeaderTitle}>All Products</Text>
         <TouchableOpacity onPress={() => navigation.navigate('OrderSummaryScreen')} style={styles.cartButton}>
-        <Icon 
-                name="cart-outline" 
-                size={24} 
-                color={darkMode ? '#D9C49D' : '#1E2541'} 
-              />
-                        {cartCount > 0 && (
+          <Icon 
+            name="cart-outline" 
+            size={24} 
+            color={darkMode ? '#D9C49D' : '#1E2541'} 
+          />
+          {cartCount > 0 && (
             <View style={styles.cartBadge}>
               <Text style={styles.cartBadgeText}>{cartCount}</Text>
             </View>
@@ -183,31 +201,31 @@ const AllProductsScreen = ({ navigation }) => {
       </View>
 
       <View style={[styles.searchContainer, darkMode && styles.darkModeSearchContainer]}>
-      <Icon name="search-outline" size={20} color="#888" style={styles.searchIcon} />
+        <Icon name="search-outline" size={20} color="#888" style={styles.searchIcon} />
         <TextInput
-              style={[styles.searchInput, darkMode && styles.darkModeSearchInput]}
-              placeholder="Search for 'Grocery'"
+          style={[styles.searchInput, darkMode && styles.darkModeSearchInput]}
+          placeholder="Search for 'Grocery'"
           placeholderTextColor="#888"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
+          value={searchTerm}
+          onChangeText={setSearchTerm}
         />
       </View>
 
       <View style={styles.filterContainer}>
         <Picker
-          selectedValue={selectedCategory}
+          selectedValue={activeCategory}
           style={[styles.picker, darkMode && styles.darkModePicker]}
-          onValueChange={(itemValue) => setSelectedCategory(itemValue)}
+          onValueChange={(itemValue) => setActiveCategory(itemValue)}
         >
-          {categories.map((category) => (
+          {categoryList.map((category) => (
             <Picker.Item key={category} label={category} value={category} />
           ))}
         </Picker>
 
         <Picker
-          selectedValue={selectedFilter}
+          selectedValue={activeFilter}
           style={[styles.picker, darkMode && styles.darkModePicker]}
-          onValueChange={(itemValue) => setSelectedFilter(itemValue)}
+          onValueChange={(itemValue) => setActiveFilter(itemValue)}
         >
           {filterOptions.map((option) => (
             <Picker.Item key={option.value} label={option.label} value={option.value} />
@@ -225,8 +243,6 @@ const AllProductsScreen = ({ navigation }) => {
     </View>
   );
 };
-
-
 
 const styles = StyleSheet.create({
   container: {
@@ -391,11 +407,10 @@ const styles = StyleSheet.create({
   centerContent: {
     justifyContent: 'center',
     alignItems: 'center',
-},
+  },
   darkModeContainer: {
     backgroundColor: '#1E2541',
     flex: 1,
-
   },
   darkModeHeaderTitle: {
     color: '#A5F1E9',

@@ -7,96 +7,82 @@ import { useAuth } from '../AuthContext';
 import { MAIN_CATEGORIES } from '../components/categoriesData'; // Adjust the path as necessary
 
 const AddServiceScreen = () => {
-    const [name, setName] = useState('');
-    const [description, setDescription] = useState('');
-    const [price, setPrice] = useState('');
-     const [image, setImage] = useState(null);
+    // State variables for form inputs and submission status
+    const [serviceName, setServiceName] = useState('');
+    const [serviceDescription, setServiceDescription] = useState('');
+    const [servicePrice, setServicePrice] = useState('');
+    const [serviceImage, setServiceImage] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { authToken, user } = useAuth();
 
     const navigation = useNavigation();
-    const route = useRoute();
     const servicesCategory = MAIN_CATEGORIES.find(cat => cat.name === 'Services');
     
+    // Ensure subcategory and subsubcategory are initialized
     const [selectedSubcategory, setSelectedSubcategory] = useState(servicesCategory.subcategories[0].name);
     const [selectedSubSubcategory, setSelectedSubSubcategory] = useState(
         Object.keys(servicesCategory.subcategories[0].subsubcategories)[0]
     );
+
+    // Function to handle adding a new service
     const handleAddService = async () => {
         if (isSubmitting) return;
-        
+
         try {
             setIsSubmitting(true);
-            
+
+            // Validate essential fields
             if (!user?.id || !authToken) {
                 Alert.alert('Error', 'You must be logged in to add a service');
                 return;
             }
-
-            if (!name.trim()) {
-                Alert.alert('Error', 'Please enter a service name');
-                return;
-            }
-            if (!description.trim()) {
-                Alert.alert('Error', 'Please enter a description');
-                return;
-            }
-            if (!price.trim()) {
-                Alert.alert('Error', 'Please enter a price');
+            if (!serviceName.trim() || !serviceDescription.trim() || !servicePrice.trim()) {
+                Alert.alert('Error', 'Please fill all required fields');
                 return;
             }
             if (!selectedSubcategory || !selectedSubSubcategory) {
                 Alert.alert('Error', 'Please select a subcategory and subsubcategory');
                 return;
-              }
-            if (!image) {
+            }
+            if (!serviceImage) {
                 Alert.alert('Error', 'Please select an image');
                 return;
             }
-    
+
+            // Prepare form data for submission
             const formData = new FormData();
-            formData.append('name', name.trim());
-            formData.append('description', description.trim());
-            formData.append('price', price.trim());
+            formData.append('name', serviceName.trim());
+            formData.append('description', serviceDescription.trim());
+            formData.append('price', servicePrice.trim());
             formData.append('category', servicesCategory.name);
             formData.append('subcategory', selectedSubcategory);
             formData.append('subsubcategory', selectedSubSubcategory);
             formData.append('userId', user.id.toString());
             formData.append('userFullName', user.full_name || user.name);
             formData.append('userPhone', user.phone);
-            console.log('FormData values:', {
-                name: name.trim(),
-                description: description.trim(),
-                price: price.trim(),
-                category: servicesCategory.name,
-                subcategory: selectedSubcategory,
-                subsubcategory: selectedSubSubcategory,
-                userId: user.id.toString(),
-                userFullName: user.full_name || user.name,
-                userPhone: user.phone
-              });
-            if (image) {
-                const imageFileName = image.split('/').pop();
+
+            if (serviceImage) {
+                const imageFileName = serviceImage.split('/').pop();
                 const match = /\.(\w+)$/.exec(imageFileName);
                 const type = match ? `image/${match[1]}` : 'image/jpeg';
-                
+
                 formData.append('image', {
-                    uri: Platform.OS === 'ios' ? image.replace('file://', '') : image,
+                    uri: Platform.OS === 'ios' ? serviceImage.replace('file://', '') : serviceImage,
                     name: imageFileName,
                     type: type
                 });
             }
-            
-            const response = await fetch('https://8b7f-41-100-123-0.ngrok-free.app/api/services', {
+
+            // Submit the service data
+            const response = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/services', {
                 method: 'POST',
                 body: formData,
                 headers: {
                     'Content-Type': 'multipart/form-data',
-                    'Authorization': `Bearer ${authToken}`, // Include the token here
-                  },
-                  
+                    'Authorization': `Bearer ${authToken}`
+                }
             });
-    
+
             const responseData = await response.json();
             
             if (response.ok) {
@@ -107,24 +93,22 @@ const AddServiceScreen = () => {
             }
         } catch (error) {
             console.error('Error adding service:', error);
-            Alert.alert(
-                'Error',
-                error.message || 'Network error or server is unreachable'
-            );
+            Alert.alert('Error', error.message || 'Network error or server is unreachable');
         } finally {
             setIsSubmitting(false);
         }
     };
 
+    // Function to handle image selection
     const handleImagePick = () => {
         const options = {
-          mediaType: 'photo', // Select images only
-          maxWidth: 800,      // Adjust the max width if needed
-          maxHeight: 600,     // Adjust the max height if needed
-          quality: 1,         // Highest quality
+          mediaType: 'photo',
+          maxWidth: 800,
+          maxHeight: 600,
+          quality: 1,
           includeBase64: false,
         };
-      
+
         launchImageLibrary(options, (response) => {
           if (response.didCancel) {
             console.log('User cancelled image picker');
@@ -133,10 +117,10 @@ const AddServiceScreen = () => {
             Alert.alert('Error', 'An error occurred while selecting the image.');
           } else {
             const uri = response.assets[0].uri;
-            setImage(uri);
+            setServiceImage(uri);
           }
         });
-      };
+    };
 
     return (
         <ScrollView style={styles.container}>
@@ -151,76 +135,76 @@ const AddServiceScreen = () => {
                 style={styles.input}
                 placeholder="Service Name"
                 placeholderTextColor="#888"
-                value={name}
-                onChangeText={setName}
+                value={serviceName}
+                onChangeText={setServiceName}
             />
             <TextInput
                 style={styles.input}
                 placeholder="Description"
                 placeholderTextColor="#888"
-                value={description}
-                onChangeText={setDescription}
+                value={serviceDescription}
+                onChangeText={setServiceDescription}
                 multiline
             />
             <TextInput
                 style={styles.input}
                 placeholder="Price"
                 placeholderTextColor="#888"
-                value={price}
-                onChangeText={setPrice}
+                value={servicePrice}
+                onChangeText={setServicePrice}
                 keyboardType="numeric"
             />
 
-            
-
             {/* Subcategories */}
-{servicesCategory && (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesContainer}>
-        {servicesCategory.subcategories.map((subcat) => (
-            <TouchableOpacity
-                key={subcat.name}
-                style={[styles.categoryButton, selectedSubcategory === subcat.name && styles.selectedCategory]}
-                onPress={() => {
-                    setSelectedSubcategory(subcat.name);
-                    setSelectedSubSubcategory(
-                        Object.keys(subcat.subsubcategories)[0]
-                    );
-                }}
-            >
-                <Text style={[styles.categoryButtonText, selectedSubcategory === subcat.name && styles.selectedCategoryText]}>
-                    {subcat.name}
-                </Text>
-            </TouchableOpacity>
-        ))}
-    </ScrollView>
-)}
+            {servicesCategory && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesContainer}>
+                    {servicesCategory.subcategories.map((subcat) => (
+                        <TouchableOpacity
+                            key={subcat.name}
+                            style={[styles.categoryButton, selectedSubcategory === subcat.name && styles.selectedCategory]}
+                            onPress={() => {
+                                setSelectedSubcategory(subcat.name);
+                                setSelectedSubSubcategory(
+                                    Object.keys(subcat.subsubcategories)[0]
+                                );
+                            }}
+                        >
+                            <Text style={[styles.categoryButtonText, selectedSubcategory === subcat.name && styles.selectedCategoryText]}>
+                                {subcat.name}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            )}
+
             {/* Sub-Subcategories */}
-{selectedSubcategory && (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesContainer}>
-        {Object.keys(
-            servicesCategory.subcategories.find(sub => sub.name === selectedSubcategory)?.subsubcategories || {}
-        ).map((subsubcat) => (
-            <TouchableOpacity
-                key={subsubcat}
-                style={[styles.categoryButton, selectedSubSubcategory === subsubcat && styles.selectedCategory]}
-                onPress={() => setSelectedSubSubcategory(subsubcat)}
-            >
-                <Text style={[styles.categoryButtonText, selectedSubSubcategory === subsubcat && styles.selectedCategoryText]}>
-                    {subsubcat}
-                </Text>
-            </TouchableOpacity>
-        ))}
-    </ScrollView>
-)}
+            {selectedSubcategory && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesContainer}>
+                    {Object.keys(
+                        servicesCategory.subcategories.find(sub => sub.name === selectedSubcategory)?.subsubcategories || {}
+                    ).map((subsubcat) => (
+                        <TouchableOpacity
+                            key={subsubcat}
+                            style={[styles.categoryButton, selectedSubSubcategory === subsubcat && styles.selectedCategory]}
+                            onPress={() => setSelectedSubSubcategory(subsubcat)}
+                        >
+                            <Text style={[styles.categoryButtonText, selectedSubSubcategory === subsubcat && styles.selectedCategoryText]}>
+                                {subsubcat}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            )}
+
             <TouchableOpacity style={styles.imageButton} onPress={handleImagePick}>
                 <Icon name="camera" size={24} color="#A5F1E9" />
                 <Text style={styles.imageButtonText}>Select Image</Text>
             </TouchableOpacity>
 
-            {image && (
+            {serviceImage && (
                 <View style={styles.imageConfirmation}>
                     <Text style={styles.imageConfirmationText}>Image Selected:</Text>
-                    <Image source={{ uri: image }} style={styles.selectedImage} />
+                    <Image source={{ uri: serviceImage }} style={styles.selectedImage} />
                 </View>
             )}
 

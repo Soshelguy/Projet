@@ -1,16 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { 
-    View, 
-    Text, 
-    StyleSheet, 
-    TouchableOpacity, 
-    FlatList, 
-    Alert,
-    ActivityIndicator 
-} from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
-import { useAuth } from '../AuthContext';
-
+/**
+ * Driver Profile Screen
+ * 
+ * This screen displays the driver's profile information and allows them to 
+ * view their delivery history, update their vehicle information, and manage their documents.
+ * 
+ * @param {object} navigation - The navigation object passed from the parent screen.
+ */
 const DriverProfileScreen = ({ navigation }) => {
     const { user } = useAuth();
     const [driverData, setDriverData] = useState(null);
@@ -22,18 +17,21 @@ const DriverProfileScreen = ({ navigation }) => {
         fetchDriverData();
     }, []);
 
+    /**
+     * Fetches the driver's profile information and delivery history from the API.
+     */
     const fetchDriverData = async () => {
         try {
             // Fetch driver profile details
-            const driverResponse = await fetch(`https://8b7f-41-100-123-0.ngrok-free.app/api/drivers/${user.id}`);
+            const driverResponse = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/drivers/${user.id}`);
             const driverData = await driverResponse.json();
 
             // Fetch delivery history
-            const historyResponse = await fetch(`https://8b7f-41-100-123-0.ngrok-free.app/api/drivers/${user.id}/deliveries`);
+            const historyResponse = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/drivers/${user.id}/deliveries`);
             const historyData = await historyResponse.json();
 
             // Fetch earnings
-            const earningsResponse = await fetch(`https://8b7f-41-100-123-0.ngrok-free.app/api/drivers/${user.id}/earnings`);
+            const earningsResponse = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/drivers/${user.id}/earnings`);
             const earningsData = await earningsResponse.json();
 
             setDriverData(driverData);
@@ -47,6 +45,11 @@ const DriverProfileScreen = ({ navigation }) => {
         }
     };
 
+    /**
+     * Renders a single delivery item in the delivery history list.
+     * 
+     * @param {object} item - The delivery item data from the API.
+     */
     const renderDeliveryItem = ({ item }) => (
         <View style={styles.deliveryItem}>
             <View style={styles.deliveryDetails}>

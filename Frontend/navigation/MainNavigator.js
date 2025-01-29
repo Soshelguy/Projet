@@ -33,16 +33,20 @@ import ProfileScreen from '../screens/ProfileScreen';
 import OrderConfirmationScreen from '../screens/OrderConfirmationScreen';
 import { useAuth } from '../AuthContext';
 
+// Initialize the stack navigator
 const Stack = createNativeStackNavigator();
 
 const MainNavigator = () => {
+    // Retrieve user authentication state and loading state
     const { user, loading } = useAuth();
 
-    const logout = async (navigation) => {
+    // Function to handle user logout
+    const handleLogout = async (navigation) => {
         try {
             await AsyncStorage.clear();
             setCurrentUser(null);
 
+            // Reset navigation stack and direct user to the Auth screen
             navigation.dispatch(
                 CommonActions.reset({
                     index: 0,
@@ -54,6 +58,7 @@ const MainNavigator = () => {
         }
     };
 
+    // Display loading indicator while checking authentication state
     if (loading) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -62,6 +67,7 @@ const MainNavigator = () => {
         );
     }
 
+    // Main navigation container
     return (
         <NavigationContainer>
             <Stack.Navigator
@@ -70,39 +76,40 @@ const MainNavigator = () => {
                     headerShown: false
                 }}
             >
-                {/* Auth Screens */}
+                {/* Authentication Screens */}
                 <Stack.Screen name="Auth" component={AuthScreen} />
                 <Stack.Screen name="SignUp" component={SignUpScreen} />
                 <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
                 <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
                 <Stack.Screen name="UserOnboarding" component={UserOnboardingScreen} />
 
-                {/* Main App Screens */}
+                {/* Main Application Screens */}
                 <Stack.Screen name="Main" component={MainTabNavigator} />
-                <Stack.Screen name="HomeScreen" component={HomeScreen} />
-                <Stack.Screen name="OrderSummaryScreen" component={OrderSummaryScreen} />
-                <Stack.Screen name="ServicesScreen" component={ServicesScreen} />
-                <Stack.Screen name="AllProductsScreen" component={AllProductsScreen} />
-                <Stack.Screen name="ProductScreen" component={ProductScreen} />
-                <Stack.Screen name="AddServiceScreen" component={AddServiceScreen} />
+                <Stack.Screen name="Home" component={HomeScreen} />
+                <Stack.Screen name="OrderSummary" component={OrderSummaryScreen} />
+                <Stack.Screen name="Services" component={ServicesScreen} />
+                <Stack.Screen name="AllProducts" component={AllProductsScreen} />
+                <Stack.Screen name="ProductDetails" component={ProductScreen} />
+                <Stack.Screen name="AddService" component={AddServiceScreen} />
                 <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
                 <Stack.Screen name="Rating" component={RatingScreen} />
                 <Stack.Screen name="Notifications" component={NotificationsScreen} />
-                <Stack.Screen name="ChatScreen" component={ChatScreen} />
-                <Stack.Screen name="Category" component={CategoryScreen} />
+                <Stack.Screen name="Chat" component={ChatScreen} />
+                <Stack.Screen name="Categories" component={CategoryScreen} />
                 <Stack.Screen name="CategoryDetailScreen" component={CategoryDetailScreen} />
                 <Stack.Screen name="SubcategoryScreen" component={SubcategoryScreen} />
-                <Stack.Screen name="AllCategoriesScreen" component={AllCategoriesScreen} />
-                <Stack.Screen name="ServiceDetailScreen" component={ServiceDetailScreen} />
-                <Stack.Screen name="DelivererSelectionScreen" component={DelivererSelectionScreen} />
-                <Stack.Screen name="OrderTrackingScreen" component={OrderTrackingScreen} />
+                <Stack.Screen name="AllCategories" component={AllCategoriesScreen} />
+                <Stack.Screen name="ServiceDetails" component={ServiceDetailScreen} />
+                <Stack.Screen name="DelivererSelection" component={DelivererSelectionScreen} />
+                <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
                 <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} />
                 <Stack.Screen name="PaymentMethods" component={PaymentMethodsScreen} />
                 <Stack.Screen name="Profile" component={ProfileScreen} />
-                <Stack.Screen name="OrderConfirmationScreen" component={OrderConfirmationScreen} />
+                <Stack.Screen name="OrderConfirmation" component={OrderConfirmationScreen} />
             </Stack.Navigator>
         </NavigationContainer>
     );
 };
 
 export default MainNavigator;
+

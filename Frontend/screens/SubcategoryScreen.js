@@ -15,76 +15,79 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 
 const SubcategoryScreen = ({ route }) => {
+  // Destructure parentCategory from route parameters
   const { parentCategory } = route.params;
   const navigation = useNavigation();
 
-  const [selectedSubcategory, setSelectedSubcategory] = useState(parentCategory.subcategories[0].name);
-  const [currentSubcategory, setCurrentSubcategory] = useState(parentCategory.subcategories[0]);
-  const [selectedSubSubcategory, setSelectedSubSubcategory] = useState(
+  // State variables for managing selected category and services
+  const [activeSubcategory, setActiveSubcategory] = useState(parentCategory.subcategories[0].name);
+  const [activeSubcategoryData, setActiveSubcategoryData] = useState(parentCategory.subcategories[0]);
+  const [activeSubSubcategory, setActiveSubSubcategory] = useState(
     Object.keys(parentCategory.subcategories[0].subsubcategories)[0]
   );
 
   const [services, setServices] = useState({});
-  const [loadingServices, setLoadingServices] = useState(false);
+  const [isFetchingServices, setIsFetchingServices] = useState(false);
 
-  const sectionPositions = useRef({});
+  // Refs for handling scroll positions
+  const sectionOffsets = useRef({});
   const scrollViewRef = useRef(null);
 
-  const scrollToSection = (sectionId) => {
-    const positionY = sectionPositions.current[sectionId];
-    if (positionY !== undefined && scrollViewRef.current) {
-      scrollViewRef.current.scrollTo({ y: positionY, animated: true });
+  const scrollToSubSubcategory = (subSubcategoryName) => {
+    const yOffset = sectionOffsets.current[subSubcategoryName];
+    if (yOffset !== undefined && scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ y: yOffset, animated: true });
     }
   };
 
-  // Update currentSubcategory and reset selectedSubSubcategory when selectedSubcategory changes
+  // Update activeSubcategoryData and reset activeSubSubcategory when activeSubcategory changes
   useEffect(() => {
-    const newSubcategory = parentCategory.subcategories.find(sub => sub.name === selectedSubcategory);
-    setCurrentSubcategory(newSubcategory);
-    setSelectedSubSubcategory(Object.keys(newSubcategory.subsubcategories)[0]);
-  }, [selectedSubcategory]);
+    const newSubcategoryData = parentCategory.subcategories.find(sub => sub.name === activeSubcategory);
+    setActiveSubcategoryData(newSubcategoryData);
+    setActiveSubSubcategory(Object.keys(newSubcategoryData.subsubcategories)[0]);
+  }, [activeSubcategory]);
 
-  // Fetch and group services when currentSubcategory changes
+  // Fetch and organize services when activeSubcategoryData changes
   useEffect(() => {
-    const fetchServices = async () => {
-      if (!currentSubcategory) return;
-      setLoadingServices(true);
+    const fetchAndGroupServices = async () => {
+      if (!activeSubcategoryData) return;
+      setIsFetchingServices(true);
       try {
         const response = await fetch(
-          `https://8b7f-41-100-123-0.ngrok-free.app/api/services?category=${encodeURIComponent(parentCategory.name)}&subcategory=${encodeURIComponent(selectedSubcategory)}`
+          `https://cf8f-197-203-19-175.ngrok-free.app/api/services?category=${encodeURIComponent(parentCategory.name)}&subcategory=${encodeURIComponent(activeSubcategory)}`
         );
 
         if (!response.ok) {
           throw new Error('Failed to fetch services');
         }
 
-        const data = await response.json();
-        const subsubcategoriesKeys = Object.keys(currentSubcategory.subsubcategories);
+        const servicesData = await response.json();
+        const subSubcategoryNames = Object.keys(activeSubcategoryData.subsubcategories);
 
-        // Group services by subsubcategory of currentSubcategory
-        const groupedServices = subsubcategoriesKeys.reduce((groups, subsubcat) => {
-          const serviceGroup = data.filter(service => service.subsubcategory === subsubcat);
-          if (serviceGroup.length > 0) {
-            groups[subsubcat] = serviceGroup;
+        // Group services by subsubcategory
+        const organizedServices = subSubcategoryNames.reduce((groups, subSubcategory) => {
+          const relatedServices = servicesData.filter(service => service.subsubcategory === subSubcategory);
+          if (relatedServices.length > 0) {
+            groups[subSubcategory] = relatedServices;
           }
           return groups;
         }, {});
 
-        setServices(groupedServices);
+        setServices(organizedServices);
       } catch (error) {
         console.error('Error fetching services:', error);
       } finally {
-        setLoadingServices(false);
+        setIsFetchingServices(false);
       }
     };
 
-    fetchServices();
-  }, [currentSubcategory]);
+    fetchAndGroupServices();
+  }, [activeSubcategoryData]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* Header */}
+        {/* Header Section */}
         <View style={styles.headerContainer}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Icon name="arrow-back" size={24} color="black" />
@@ -92,97 +95,94 @@ const SubcategoryScreen = ({ route }) => {
           <Text style={styles.headerTitle}>{parentCategory.name}</Text>
         </View>
 
-        {/* Subcategories Horizontal ScrollView */}
+        {/* Subcategories Navigation */}
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
-          style={styles.subcategoryScrollView}
+          style={styles.subcategoryScrollContainer}
         >
-          {parentCategory.subcategories.map((subcat, index) => (
+          {parentCategory.subcategories.map((subcategory, index) => (
             <TouchableOpacity
               key={index}
               style={[
                 styles.subcategoryItem,
-                selectedSubcategory === subcat.name && styles.selectedSubcategoryItem,
+                activeSubcategory === subcategory.name && styles.selectedSubcategoryItem,
               ]}
               onPress={() => {
-                setSelectedSubcategory(subcat.name);
-                sectionPositions.current = {};
+                setActiveSubcategory(subcategory.name);
+                sectionOffsets.current = {};
                 if (scrollViewRef.current) {
                   scrollViewRef.current.scrollTo({ y: 0, animated: false });
                 }
               }}
             >
-              <Text style={styles.subcategoryItemText}>{subcat.name}</Text>
+              <Text style={styles.subcategoryText}>{subcategory.name}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        {/* SubSubcategories Horizontal ScrollView */}
+        {/* SubSubcategories Navigation */}
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
-          style={styles.subsubcategoryScrollView}
+          style={styles.subsubcategoryScrollContainer}
         >
-          {Object.keys(currentSubcategory.subsubcategories).map((subsubcat, index) => (
+          {Object.keys(activeSubcategoryData.subsubcategories).map((subSubcategory, index) => (
             <TouchableOpacity
               key={index}
               style={[
                 styles.subsubcategoryItem,
-                selectedSubSubcategory === subsubcat && styles.selectedSubsubcategoryItem,
+                activeSubSubcategory === subSubcategory && styles.selectedSubsubcategoryItem,
               ]}
-              onPress={() => {
-                setSelectedSubSubcategory(subsubcat);
-                scrollToSection(subsubcat);
-              }}
+              onPress={() => setActiveSubSubcategory(subSubcategory)}
             >
-              <Text style={styles.subsubcategoryItemText}>{subsubcat}</Text>
+              <Text style={styles.subsubcategoryText}>{subSubcategory}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        {/* Content Area */}
-        {loadingServices ? (
-          <View style={styles.loadingContainer}>
+        {/* Services Display */}
+        {isFetchingServices ? (
+          <View style={styles.loadingWrapper}>
             <ActivityIndicator size="large" color="#0000ff" />
             <Text>Loading services...</Text>
           </View>
         ) : (
-          <ScrollView style={styles.contentContainer} ref={scrollViewRef}>
+          <ScrollView style={styles.servicesContainer} ref={scrollViewRef}>
             {Object.keys(services).length > 0 ? (
-              Object.keys(services).map((subsubcat) => (
+              Object.keys(services).map((subSubcategory) => (
                 <View
-                  key={subsubcat}
+                  key={subSubcategory}
                   onLayout={(event) => {
                     const { y } = event.nativeEvent.layout;
-                    sectionPositions.current[subsubcat] = y;
+                    sectionOffsets.current[subSubcategory] = y;
                   }}
                 >
-                  {/* Section Header */}
-                  <Text style={styles.sectionHeader}>{subsubcat}</Text>
-                  <View style={styles.itemsGrid}>
-                    {services[subsubcat].map((service) => (
+                  {/* SubSubcategory Header */}
+                  <Text style={styles.sectionHeader}>{subSubcategory}</Text>
+                  <View style={styles.servicesGrid}>
+                    {services[subSubcategory].map((service) => (
                       <TouchableOpacity 
                         key={service.id}
-                        style={styles.itemCard}
+                        style={styles.serviceCard}
                         onPress={() => {
                           // Navigate to service details screen if needed
                         }}
                       >
                         <Image
-                          source={{ uri: service.image }} // Ensure 'service.image' contains a valid image URL
-                          style={styles.itemImage}
+                          source={{ uri: service.image }} // Ensure 'service.image' is a valid URL
+                          style={styles.serviceImage}
                         />
-                        <Text style={styles.itemTitle}>{service.name}</Text>
-                        <Text style={styles.itemDescription}>{service.description}</Text>
-                        <Text style={styles.itemPrice}>${service.price}</Text>
+                        <Text style={styles.serviceTitle}>{service.name}</Text>
+                        <Text style={styles.serviceDescription}>{service.description}</Text>
+                        <Text style={styles.servicePrice}>${service.price}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 </View>
               ))
             ) : (
-              <View style={styles.noServicesContainer}>
+              <View style={styles.noServicesWrapper}>
                 <Text>No services available for this category.</Text>
               </View>
             )}
@@ -218,9 +218,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  // Styles for subcategory scroll view
-  subcategoryScrollView: {
-    backgroundColor: '#E0F7FA', // Light cyan
+  subcategoryScrollContainer: {
+    backgroundColor: '#E0F7FA',
     paddingVertical: 10,
     maxHeight: 60,
   },
@@ -228,19 +227,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 10,
     marginHorizontal: 5,
-    backgroundColor: '#80DEEA', // Medium cyan
+    backgroundColor: '#80DEEA',
     borderRadius: 20,
   },
-  subcategoryItemText: {
+  subcategoryText: {
     fontSize: 14,
     color: 'black',
   },
   selectedSubcategoryItem: {
-    backgroundColor: '#26C6DA', // Darker cyan
+    backgroundColor: '#26C6DA',
   },
-  // Styles for subsubcategory scroll view
-  subsubcategoryScrollView: {
-    backgroundColor: '#FFF9C4', // Light yellow
+  subsubcategoryScrollContainer: {
+    backgroundColor: '#FFF9C4',
     paddingVertical: 10,
     maxHeight: 60,
   },
@@ -248,18 +246,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 10,
     marginHorizontal: 5,
-    backgroundColor: '#FFF176', // Medium yellow
+    backgroundColor: '#FFF176',
     borderRadius: 20,
   },
-  subsubcategoryItemText: {
+  subsubcategoryText: {
     fontSize: 14,
     color: 'black',
   },
   selectedSubsubcategoryItem: {
-    backgroundColor: '#FFD54F', // Darker yellow
+    backgroundColor: '#FFD54F',
   },
-  // Content styles
-  contentContainer: {
+  servicesContainer: {
     flex: 1,
     padding: 10,
   },
@@ -269,12 +266,12 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     color: '#333',
   },
-  itemsGrid: {
+  servicesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-  itemCard: {
+  serviceCard: {
     width: width * 0.45 - 10,
     padding: 10,
     marginBottom: 10,
@@ -282,41 +279,40 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     elevation: 3,
     marginHorizontal: 5,
-    // Shadow for iOS
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.27,
     shadowRadius: 4.65,
   },
-  itemImage: {
+  serviceImage: {
     width: '100%',
     height: 100,
     borderRadius: 10,
     marginBottom: 5,
   },
-  itemTitle: {
+  serviceTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'left',
   },
-  itemDescription: {
+  serviceDescription: {
     fontSize: 12,
     color: '#777',
     marginBottom: 5,
     textAlign: 'left',
   },
-  itemPrice: {
+  servicePrice: {
     fontSize: 14,
     fontWeight: 'bold',
     color: '#000',
     textAlign: 'left',
   },
-  loadingContainer: {
+  loadingWrapper: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  noServicesContainer: {
+  noServicesWrapper: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',

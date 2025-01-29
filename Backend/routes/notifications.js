@@ -1,7 +1,19 @@
+/**
+ * This file contains routes for handling notifications.
+ * 
+ * @module routes/notifications
+ */
+
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 
+/**
+ * This route gets all notifications for a user.
+ * 
+ * @param {integer} id The ID of the user to get notifications for.
+ * @return {json} A JSON object containing an array of notifications for the user.
+ */
 router.get('/user/:id', async (req, res) => {
     try {
         const notifications = await pool.query(
@@ -15,6 +27,12 @@ router.get('/user/:id', async (req, res) => {
     }
 });
 
+/**
+ * This route marks a notification as read.
+ * 
+ * @param {integer} id The ID of the notification to mark as read.
+ * @return {json} A JSON object with a message indicating that the notification was marked as read.
+ */
 router.put('/:id/read', async (req, res) => {
     try {
         await pool.query(

@@ -1,20 +1,23 @@
 import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-
+// Create a context for app settings
 export const AppSettingsContext = createContext();
 
 export const AppSettingsProvider = ({ children }) => {
-    const [darkMode, setDarkMode] = useState(false);
-    const [notifications, setNotifications] = useState(true);
-    const [location, setLocation] = useState(true);
-    const [fastDelivery, setFastDelivery] = useState(false);
-    const [contactlessDelivery, setContactlessDelivery] = useState(true);
+    // State variables for different settings
+    const [isDarkModeEnabled, setIsDarkModeEnabled] = useState(false);
+    const [areNotificationsEnabled, setAreNotificationsEnabled] = useState(true);
+    const [isLocationEnabled, setIsLocationEnabled] = useState(true);
+    const [isFastDeliveryEnabled, setIsFastDeliveryEnabled] = useState(false);
+    const [isContactlessDeliveryEnabled, setIsContactlessDeliveryEnabled] = useState(true);
 
+    // Load settings from AsyncStorage on component mount
     useEffect(() => {
         loadSettings();
     }, []);
 
+    // Function to load settings from AsyncStorage
     const loadSettings = async () => {
         try {
             const darkModeSetting = await AsyncStorage.getItem('darkMode');
@@ -23,16 +26,18 @@ export const AppSettingsProvider = ({ children }) => {
             const fastDeliverySetting = await AsyncStorage.getItem('fastDelivery');
             const contactlessDeliverySetting = await AsyncStorage.getItem('contactlessDelivery');
 
-            setDarkMode(darkModeSetting === 'true');
-            setNotifications(notificationsSetting !== 'false');
-            setLocation(locationSetting !== 'false');
-            setFastDelivery(fastDeliverySetting === 'true');
-            setContactlessDelivery(contactlessDeliverySetting !== 'false');
+            // Parse settings and update state
+            setIsDarkModeEnabled(darkModeSetting === 'true');
+            setAreNotificationsEnabled(notificationsSetting !== 'false');
+            setIsLocationEnabled(locationSetting !== 'false');
+            setIsFastDeliveryEnabled(fastDeliverySetting === 'true');
+            setIsContactlessDeliveryEnabled(contactlessDeliverySetting !== 'false');
         } catch (error) {
             console.error('Error loading settings:', error);
         }
     };
 
+    // Function to save a setting to AsyncStorage
     const saveSetting = async (key, value) => {
         try {
             await AsyncStorage.setItem(key, JSON.stringify(value));
@@ -41,53 +46,55 @@ export const AppSettingsProvider = ({ children }) => {
         }
     };
 
+    // Toggle functions to update settings
     const toggleDarkMode = () => {
-        setDarkMode(prev => {
+        setIsDarkModeEnabled(prev => {
             saveSetting('darkMode', !prev);
             return !prev;
         });
     };
 
     const toggleNotifications = () => {
-        setNotifications(prev => {
+        setAreNotificationsEnabled(prev => {
             saveSetting('notifications', !prev);
             return !prev;
         });
     };
 
     const toggleLocation = () => {
-        setLocation(prev => {
+        setIsLocationEnabled(prev => {
             saveSetting('location', !prev);
             return !prev;
         });
     };
 
     const toggleFastDelivery = () => {
-        setFastDelivery(prev => {
+        setIsFastDeliveryEnabled(prev => {
             saveSetting('fastDelivery', !prev);
             return !prev;
         });
     };
 
     const toggleContactlessDelivery = () => {
-        setContactlessDelivery(prev => {
+        setIsContactlessDeliveryEnabled(prev => {
             saveSetting('contactlessDelivery', !prev);
             return !prev;
         });
     };
 
+    // Provide state and toggle functions to context consumers
     return (
         <AppSettingsContext.Provider
             value={{
-                darkMode,
+                isDarkModeEnabled,
                 toggleDarkMode,
-                notifications,
+                areNotificationsEnabled,
                 toggleNotifications,
-                location,
+                isLocationEnabled,
                 toggleLocation,
-                fastDelivery,
+                isFastDeliveryEnabled,
                 toggleFastDelivery,
-                contactlessDelivery,
+                isContactlessDeliveryEnabled,
                 toggleContactlessDelivery,
             }}
         >
@@ -95,3 +102,4 @@ export const AppSettingsProvider = ({ children }) => {
         </AppSettingsContext.Provider>
     );
 };
+

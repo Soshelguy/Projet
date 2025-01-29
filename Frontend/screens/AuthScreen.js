@@ -2,46 +2,50 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../AuthContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// AuthScreen component handles user authentication
 const AuthScreen = ({ navigation }) => {
+    // State variables for user input
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const { login, generateToken } = useAuth(); 
 
-
+    // Function to handle user login
     const handleLogin = async () => {
         try {
-            const response = await fetch('https://8b7f-41-100-123-0.ngrok-free.app/api/login', {
+            // Sending login request to the server
+            const response = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
             });
-    
+
+            // Check if response is not ok
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
-              }
+            }
+
             const data = await response.json();
-    
+
+            // If login is successful
             if (response.ok) {
                 // Ensure we have a token
-                const authToken = data.token || 
-                    await generateToken({
-                        userId: data.user.id, 
-                        email: data.user.email
-                    });
-    
+                const authToken = data.token || await generateToken({
+                    userId: data.user.id, 
+                    email: data.user.email
+                });
+
                 // Prepare user data for login
                 const userData = {
                     id: data.user.id,
                     email: data.user.email,
                     name: data.user.name,
-                    phone_number: data.user.phone_number,
+                    phoneNumber: data.user.phone_number, // Better variable naming
                     address: data.user.address,
-                    profile_image_url: data.user.profile_image_url,
+                    profileImageUrl: data.user.profile_image_url, // Consistent naming
                     token: authToken
                 };
-    
+
                 // Use the login method from AuthContext
                 await login(userData);
                 navigation.navigate('Main');
@@ -53,7 +57,7 @@ const AuthScreen = ({ navigation }) => {
             Alert.alert('Login Failed', 'An error occurred. Please try again later.');
         }
     };
-    
+
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor="#1E2541" />

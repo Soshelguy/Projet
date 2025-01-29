@@ -1,18 +1,26 @@
-import React, { useContext } from 'react';
+/**
+ * OrderHistoryScreen component displays the order history of the user.
+ * This component is a placeholder and doesn't fetch any data yet.
+ * It only displays a message to the user to check back after making some orders.
+ */
+import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { AppSettingsContext } from '../AppSettingsContext';
 
+/**
+ * Render the OrderHistoryScreen component.
+ */
 const OrderHistoryScreen = () => {
-    const { darkMode } = useContext(AppSettingsContext);
+    const { isDarkMode } = useContext(AppSettingsContext);
 
     return (
-        <ScrollView style={[styles.container, darkMode && styles.darkModeContainer]}>
-            <Text style={[styles.title, darkMode && styles.darkModeText]}>Order History</Text>
+        <ScrollView style={[styles.container, isDarkMode && styles.darkModeContainer]}>
+            <Text style={[styles.title, isDarkMode && styles.darkModeText]}>Order History</Text>
             <View style={styles.placeholderContent}>
-                <Text style={[styles.placeholderText, darkMode && styles.darkModeText]}>
+                <Text style={[styles.placeholderText, isDarkMode && styles.darkModeText]}>
                     Your order history will be displayed here.
                 </Text>
-                <Text style={[styles.placeholderSubtext, darkMode && styles.darkModeText]}>
+                <Text style={[styles.placeholderSubtext, isDarkMode && styles.darkModeText]}>
                     Check back after you've made some orders!
                 </Text>
             </View>
@@ -20,6 +28,9 @@ const OrderHistoryScreen = () => {
     );
 };
 
+/**
+ * Styles for the OrderHistoryScreen component.
+ */
 const styles = StyleSheet.create({
     container: {
         flex: 1,

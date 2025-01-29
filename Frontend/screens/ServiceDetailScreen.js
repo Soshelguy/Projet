@@ -1,3 +1,10 @@
+/**
+ * ServiceDetailScreen: A screen for displaying a service's details
+ * 
+ * Props:
+ *  - route: An object containing the service ID
+ *  - navigation: A navigation object for navigating between screens
+ */
 import React, { useState, useEffect } from 'react';
 import { 
     View, 
@@ -42,12 +49,14 @@ const ServiceDetailScreen = ({ route, navigation }) => {
             fetchUserBookings();
         }
     }, [serviceId]);
+
     useEffect(() => {
         if (user && serviceId) {
             checkBookingStatus();
         }
     }, [user, serviceId]);
 
+    // Fetch the service details from the API
     const getCurrentUser = async () => {
         try {
             const userData = await AsyncStorage.getItem('userData');
@@ -63,8 +72,9 @@ const ServiceDetailScreen = ({ route, navigation }) => {
 
     const fetchServiceDetails = async () => {
         try {
-            const response = await fetch(`https://8b7f-41-100-123-0.ngrok-free.app/api/services/${serviceId}`);
+            const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/services/${serviceId}`);
             if (!response.ok) throw new Error('Service fetch failed');
+
             
             const data = await response.json();
             // Normalize the data
@@ -85,14 +95,16 @@ const ServiceDetailScreen = ({ route, navigation }) => {
         }
     };
 
+    // Fetch the user's bookings from the API
     const fetchUserBookings = async () => {
         try {
-            const response = await fetch(`https://8b7f-41-100-123-0.ngrok-free.app/api/services/bookings/user/${currentUserId}`, {
+            const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/services/bookings/user/${currentUserId}`, {
                 headers: {
                     'user-id': currentUserId 
                 }
             });
             if (!response.ok) throw new Error('Failed to fetch bookings');
+
             
             const bookings = await response.json();
             setUserBookings(bookings);
@@ -106,6 +118,7 @@ const ServiceDetailScreen = ({ route, navigation }) => {
         }
     };
 
+    // Check if the user has completed a booking for this service
     const handleBooking = async () => {
         try {
             if (!message.trim()) {
@@ -118,7 +131,7 @@ const ServiceDetailScreen = ({ route, navigation }) => {
                 return;
             }
     
-            const response = await fetch('https://8b7f-41-100-123-0.ngrok-free.app/api/services/bookings', {
+            const response = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/services/bookings', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -153,7 +166,7 @@ const ServiceDetailScreen = ({ route, navigation }) => {
                 return;
             }
 
-            const response = await fetch('https://8b7f-41-100-123-0.ngrok-free.app/api/ratings/create', {
+            const response = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/ratings/create', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -182,7 +195,7 @@ const ServiceDetailScreen = ({ route, navigation }) => {
     };
     const checkBookingStatus = async () => {
         try {
-            const response = await fetch(`https://8b7f-41-100-123-0.ngrok-free.app/api/services/bookings/user`, {
+            const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/services/bookings/user`, {
                 headers: {
                     'user-id': user.id.toString()
                 }
@@ -202,7 +215,7 @@ const ServiceDetailScreen = ({ route, navigation }) => {
 
     const sendNotification = async (userId, title, message) => {
         try {
-            await fetch('https://8b7f-41-100-123-0.ngrok-free.app/api/notifications/create', {
+            await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/notifications/create', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

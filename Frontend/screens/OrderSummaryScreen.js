@@ -4,18 +4,32 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useCart } from '../CartContext';
 import { AppSettingsContext } from '../AppSettingsContext';
 
+/**
+ * Renders the OrderSummaryScreen component.
+ * This screen displays the items in the user's cart and provides a total of the items and their prices.
+ * The user can proceed to checkout from this screen.
+ */
 const OrderSummaryScreen = ({ navigation }) => {
   const { cartItems, cartCount, removeFromCart, addToCart, removeEntireItem } = useCart();
   const { darkMode } = useContext(AppSettingsContext);
 
+  /**
+   * Transforms the cart items object to an array of items for easier rendering.
+   */
   const cartItemsArray = useMemo(() => {
     return Object.values(cartItems);
   }, [cartItems]);
 
+  /**
+   * Calculates the total quantity of items in the cart.
+   */
   const totalQuantity = useMemo(() => {
     return cartItemsArray.reduce((sum, item) => sum + item.quantity, 0);
   }, [cartItemsArray]);
 
+  /**
+   * Calculates the total price of the items in the cart.
+   */
   const totalPrice = useMemo(() => {
     return cartItemsArray.reduce((sum, item) => {
       const itemPrice = parseFloat(item.price.replace(/[^\d.]/g, '')) || 0;
@@ -23,6 +37,9 @@ const OrderSummaryScreen = ({ navigation }) => {
     }, 0);
   }, [cartItemsArray]);
 
+  /**
+   * Renders individual cart items.
+   */
   const renderCartItem = ({ item }) => {
     return (
       <View style={[styles.cartItemContainer, darkMode && styles.darkModeCartItemContainer]}>

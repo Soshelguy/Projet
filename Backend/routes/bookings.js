@@ -1,7 +1,30 @@
+/**
+ * This file contains functions for creating a booking, updating the status of a booking, and
+ * getting all bookings for a user.
+ * 
+ * The create function creates a new booking in the database. It takes the service ID, customer ID, provider ID, 
+ * and an optional initial message. If the initial message is provided, it is inserted into the messages table.
+ * It returns the newly created booking.
+ * 
+ * The updateStatus function updates the status of a booking in the database. It takes the booking ID and the new status.
+ * It also inserts a notification into the notifications table to let the customer know that their booking status has changed.
+ * It returns the updated booking.
+ * 
+ * The getByUser function retrieves all bookings for a given user. It takes the user ID and returns an array of bookings.
+ */
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 
+/**
+ * Create a new booking in the database.
+ * @param {Object} req.body - The request body
+ * @param {number} req.body.service_id - The ID of the service
+ * @param {number} req.body.customer_id - The ID of the customer
+ * @param {number} req.body.provider_id - The ID of the provider
+ * @param {string} [req.body.initial_message] - The initial message from the customer
+ * @return {Object} The newly created booking
+ */
 router.post('/create', async (req, res) => {
     try {
         const { service_id, customer_id, provider_id, initial_message } = req.body;
@@ -30,6 +53,13 @@ router.post('/create', async (req, res) => {
     }
 });
 
+/**
+ * Update the status of a booking.
+ * @param {number} req.params.id - The ID of the booking
+ * @param {Object} req.body - The request body
+ * @param {string} req.body.status - The new status of the booking
+ * @return {Object} The updated booking
+ */
 router.put('/:id/status', async (req, res) => {
     try {
         const { status } = req.body;
@@ -50,6 +80,11 @@ router.put('/:id/status', async (req, res) => {
     }
 });
 
+/**
+ * Get all bookings for a given user.
+ * @param {number} req.params.id - The ID of the user
+ * @return {Array} An array of bookings
+ */
 router.get('/user/:id', async (req, res) => {
     try {
         const bookings = await pool.query(`
@@ -70,3 +105,4 @@ router.get('/user/:id', async (req, res) => {
 });
 
 module.exports = router;
+
