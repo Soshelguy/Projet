@@ -7,7 +7,7 @@
  * 
  * @returns {ReactElement} - The component
  */
-import { StyleSheet } from 'react-native'; // <--- Add this line
+import { StyleSheet } from 'react-native';
 
 const PaymentMethodsScreen = () => {
     const { isDarkMode } = useContext(AppSettingsContext);
