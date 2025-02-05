@@ -31,7 +31,7 @@ const AllProductsScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
 
-  const API_BASE_URL = 'https://cf8f-197-203-19-175.ngrok-free.app'; 
+  const API_BASE_URL = 'http://192.168.1.2:5000'; 
 
   const categoryList = [
     'All', 'Meats', 'Vege', 'Fruits', 'Breads', 'Dairy', 'Snacks', 'Drinks'

@@ -54,7 +54,7 @@ const SubcategoryScreen = ({ route }) => {
       setIsFetchingServices(true);
       try {
         const response = await fetch(
-          `https://cf8f-197-203-19-175.ngrok-free.app/api/services?category=${encodeURIComponent(parentCategory.name)}&subcategory=${encodeURIComponent(activeSubcategory)}`
+          `http://192.168.1.2:5000/api/services?category=${encodeURIComponent(parentCategory.name)}&subcategory=${encodeURIComponent(activeSubcategory)}`
         );
 
         if (!response.ok) {

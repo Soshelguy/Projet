@@ -94,12 +94,12 @@ const MainNavigator = () => {
                 <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
                 <Stack.Screen name="Rating" component={RatingScreen} />
                 <Stack.Screen name="Notifications" component={NotificationsScreen} />
-                <Stack.Screen name="Chat" component={ChatScreen} />
+                <Stack.Screen name="ChatScreen" component={ChatScreen} />
                 <Stack.Screen name="Categories" component={CategoryScreen} />
                 <Stack.Screen name="CategoryDetailScreen" component={CategoryDetailScreen} />
                 <Stack.Screen name="SubcategoryScreen" component={SubcategoryScreen} />
                 <Stack.Screen name="AllCategories" component={AllCategoriesScreen} />
-                <Stack.Screen name="ServiceDetails" component={ServiceDetailScreen} />
+                <Stack.Screen name="ServiceDetailScreen" component={ServiceDetailScreen} />
                 <Stack.Screen name="DelivererSelection" component={DelivererSelectionScreen} />
                 <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
                 <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} />

@@ -5,7 +5,7 @@
  *  - route: An object containing the service ID
  *  - navigation: A navigation object for navigating between screens
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { 
     View, 
     Text, 
@@ -16,20 +16,19 @@ import {
     Modal,
     TextInput,
     Alert,
-    ActivityIndicator,
-    Platform
+    ActivityIndicator
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFavorites } from '../FavoritesContext';
 import { useAuth } from '../AuthContext';
+import moment from 'moment';
 
 const ServiceDetailScreen = ({ route, navigation }) => {
     const { serviceId } = route.params;
     const [service, setService] = useState(null);
     const [showBookingModal, setShowBookingModal] = useState(false);
     const [showRatingModal, setShowRatingModal] = useState(false);
-    const [message, setMessage] = useState('');
     const [rating, setRating] = useState(0);
     const [feedback, setFeedback] = useState('');
     const [currentUserId, setCurrentUserId] = useState(null);
@@ -38,10 +37,11 @@ const ServiceDetailScreen = ({ route, navigation }) => {
     const [userBookings, setUserBookings] = useState([]);
     const [canRate, setCanRate] = useState(false);
     const [hasCompletedBooking, setHasCompletedBooking] = useState(false);
-    const { checkIfFavorite, toggleFavorite } = useFavorites();
-    const isFavorite = serviceId ? checkIfFavorite(serviceId) : false;
-    const { user } = useAuth();
-
+    const { isServiceFavorite, toggleFavoriteService } = useFavorites();
+    const isFavorite = serviceId ? isServiceFavorite(serviceId) : false;
+    const { authToken, user } = useAuth();
+    const [selectedDate, setSelectedDate] = useState(null);
+    const [selectedTimeSlot, setSelectedTimeSlot] = useState(null);
     useEffect(() => {
         getCurrentUser();
         if (serviceId) {
@@ -49,6 +49,13 @@ const ServiceDetailScreen = ({ route, navigation }) => {
             fetchUserBookings();
         }
     }, [serviceId]);
+    // Check user on mount or whenever user changes (e.g. re-login)
+    useEffect(() => {
+        if (!user) {
+        // If user is not logged in, you can decide how to handle it
+        console.log('No user found. Possibly show a login prompt or redirect.');
+        }
+    }, [user]);
 
     useEffect(() => {
         if (user && serviceId) {
@@ -56,6 +63,24 @@ const ServiceDetailScreen = ({ route, navigation }) => {
         }
     }, [user, serviceId]);
 
+    useEffect(() => {
+        if (serviceId && currentUserId) {
+          fetchData();
+        }
+      }, [serviceId, currentUserId]);
+    
+      const fetchData = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+          await fetchServiceDetails();
+          // You could also call fetchUserBookings() or checkBookingStatus() in parallel here
+        } catch (err) {
+          console.error('Error in fetchData:', err);
+        } finally {
+          setLoading(false);
+        }
+      };
     // Fetch the service details from the API
     const getCurrentUser = async () => {
         try {
@@ -69,10 +94,27 @@ const ServiceDetailScreen = ({ route, navigation }) => {
             setError('Failed to get user data');
         }
     };
+    // Generate available time slots
+    const generateTimeSlots = () => {
+        const slots = [
+            '09:00', '10:00', '11:00', '12:00', 
+            '13:00', '14:00', '15:00', '16:00', 
+            '17:00', '18:00'
+        ];
+        return slots;
+    };
 
+    // Generate next 7 days for booking
+    const generateAvailableDates = () => {
+        const dates = [];
+        for (let i = 0; i < 7; i++) {
+            dates.push(moment().add(i, 'days'));
+        }
+        return dates;
+    };
     const fetchServiceDetails = async () => {
         try {
-            const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/services/${serviceId}`);
+            const response = await fetch(`http://192.168.1.2:5000/api/services/${serviceId}`);
             if (!response.ok) throw new Error('Service fetch failed');
 
             
@@ -98,7 +140,7 @@ const ServiceDetailScreen = ({ route, navigation }) => {
     // Fetch the user's bookings from the API
     const fetchUserBookings = async () => {
         try {
-            const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/services/bookings/user/${currentUserId}`, {
+            const response = await fetch(`http://192.168.1.2:5000/api/services/bookings/user/${currentUserId}`, {
                 headers: {
                     'user-id': currentUserId 
                 }
@@ -121,41 +163,62 @@ const ServiceDetailScreen = ({ route, navigation }) => {
     // Check if the user has completed a booking for this service
     const handleBooking = async () => {
         try {
-            if (!message.trim()) {
-                Alert.alert('Error', 'Please enter a message for the provider');
-                return;
-            }
-    
             if (!user) {
                 Alert.alert('Error', 'Please log in to book services');
                 return;
             }
     
-            const response = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/services/bookings', {
+            // Validate booking details
+            if (!selectedDate || !selectedTimeSlot) {
+                Alert.alert('Error', 'Please select a date and time');
+                return;
+            }
+    
+            const bookingData = {
+                service_id: serviceId,
+                booking_date: moment(selectedDate).format('YYYY-MM-DD'),
+                booking_time: selectedTimeSlot
+            };
+    
+            console.log('Preparing to send booking data:', bookingData);
+    
+            // Ensure the token is valid and not expired
+            if (!authToken) {
+                Alert.alert('Error', 'Authentication token is missing');
+                return;
+            }
+    
+            const response = await fetch('http://192.168.1.2:5000/api/bookings/create', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'user-id': user.id.toString() 
+                    'Authorization': `Bearer ${authToken}`
                 },
-                body: JSON.stringify({
-                    serviceId,
-                    message
-                })
+                body: JSON.stringify(bookingData)
             });
     
-            if (!response.ok) throw new Error('Booking creation failed');
+            console.log('Booking response status:', response.status);
+            if (!response.ok) {
+                const errorBody = await response.text();
+                console.log('Booking error body:', errorBody);
+                throw new Error('Booking creation failed');
+            }
     
             const booking = await response.json();
-            
+            console.log('Booking created successfully:', booking);
+    
+            // Reset states and close modal
             setShowBookingModal(false);
-            navigation.navigate('ChatScreen', { 
-                bookingId: booking.id,
-                serviceId,
-                providerId: service.user_id
-            });
+            setSelectedDate(null);
+            setSelectedTimeSlot('');
+    
+            Alert.alert('Booking Successful', 'Your booking has been submitted.');
+    
+            // Navigate to ChatScreen
+            navigation.navigate('ChatScreen', { bookingId: booking.id, serviceId, providerId: service.user_id });
         } catch (error) {
             console.error('Error creating booking:', error);
-            Alert.alert('Error', 'Failed to create booking');
+            Alert.alert('Error', 'Failed to create booking.');
         }
     };
 
@@ -166,7 +229,7 @@ const ServiceDetailScreen = ({ route, navigation }) => {
                 return;
             }
 
-            const response = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/ratings/create', {
+            const response = await fetch('http://192.168.1.2:5000/api/ratings/create', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -195,7 +258,7 @@ const ServiceDetailScreen = ({ route, navigation }) => {
     };
     const checkBookingStatus = async () => {
         try {
-            const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/services/bookings/user`, {
+            const response = await fetch(`http://192.168.1.2:5000/api/services/bookings/user`, {
                 headers: {
                     'user-id': user.id.toString()
                 }
@@ -215,7 +278,7 @@ const ServiceDetailScreen = ({ route, navigation }) => {
 
     const sendNotification = async (userId, title, message) => {
         try {
-            await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/notifications/create', {
+            await fetch('http://192.168.1.2:5000/api/notifications/create', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -240,34 +303,36 @@ const ServiceDetailScreen = ({ route, navigation }) => {
         );
     }
 
-    if (error) {
-        return (
-            <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
-                <TouchableOpacity 
-                    style={styles.retryButton}
-                    onPress={fetchServiceDetails}
-                >
-                    <Text style={styles.retryButtonText}>Retry</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
+    // Show error if something went wrong
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={() => {
+            // Clear error and re-fetch
+            setError(null);
+            fetchData();
+          }}
+        >
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
-    if (!service) {
-        return (
-            <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>Service not found</Text>
-                <TouchableOpacity 
-                    style={styles.retryButton}
-                    onPress={() => navigation.goBack()}
-                >
-                    <Text style={styles.retryButtonText}>Go Back</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
-
+     // Show if service is missing or failed to load
+  if (!service) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Service not found</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.retryButtonText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
     return (
         <ScrollView style={styles.container}>
             <Image 
@@ -278,7 +343,7 @@ const ServiceDetailScreen = ({ route, navigation }) => {
             <View style={styles.header}>
                 <Text style={styles.title}>{service.name}</Text>
                 <TouchableOpacity 
-                    onPress={() => toggleFavorite(serviceId)} 
+                    onPress={() => toggleFavoriteService(serviceId)} 
                     style={styles.favoriteButton}
                 >
                     <Icon 
@@ -305,12 +370,16 @@ const ServiceDetailScreen = ({ route, navigation }) => {
                 <Text style={styles.description}>{service.description}</Text>
                 
                 {currentUserId !== service.user_id && (
+                    <View style={styles.bookingSection}>
+                    <Text style={styles.sectionTitle}>Book This Service</Text>
                     <TouchableOpacity 
                         style={styles.bookButton}
                         onPress={() => setShowBookingModal(true)}
                     >
-                        <Text style={styles.bookButtonText}>Book Now</Text>
+                        <Icon name="calendar" size={24} color="#fff" />
+                        <Text style={styles.bookButtonText}>Schedule Booking</Text>
                     </TouchableOpacity>
+                </View>
                 )}
             </View>
             {hasCompletedBooking && (
@@ -322,33 +391,73 @@ const ServiceDetailScreen = ({ route, navigation }) => {
                 </TouchableOpacity>
             )}
 
-            {/* Booking Modal */}
-            <Modal
+           {/* Booking Modal with Calendar and Time Slots */}
+           <Modal
                 visible={showBookingModal}
                 transparent={true}
+                animationType="slide"
                 onRequestClose={() => setShowBookingModal(false)}
             >
-                <View style={styles.modalContainer}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Book Service</Text>
-                        <TextInput
-                            placeholder="Message for the provider"
-                            value={message}
-                            onChangeText={setMessage}
-                            style={styles.messageInput}
-                            multiline
-                        />
-                        <TouchableOpacity
-                            style={styles.submitButton}
-                            onPress={handleBooking}
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContainer}>
+                        <Text style={styles.modalTitle}>Book Your Service</Text>
+                        
+                        {/* Date Selection */}
+                        <Text style={styles.subTitle}>Select Date</Text>
+                        <ScrollView 
+                            horizontal 
+                            showsHorizontalScrollIndicator={false}
+                            style={styles.dateScrollView}
                         >
-                            <Text style={styles.submitText}>Submit Booking</Text>
+                            {generateAvailableDates().map((date) => (
+                                <TouchableOpacity
+                                    key={date.format('YYYY-MM-DD')}
+                                    style={[
+                                        styles.dateButton,
+                                        selectedDate && selectedDate.isSame(date, 'day') && styles.selectedDateButton
+                                    ]}
+                                    onPress={() => setSelectedDate(date)}
+                                >
+                                    <Text style={styles.dateText}>{date.format('ddd')}</Text>
+                                    <Text style={styles.dateNumberText}>{date.format('D')}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+
+                        {/* Time Slot Selection */}
+                        <Text style={styles.subTitle}>Select Time</Text>
+                        <View style={styles.timeSlotsContainer}>
+                            {generateTimeSlots().map((time) => (
+                                <TouchableOpacity
+                                    key={time}
+                                    style={[
+                                        styles.timeSlotButton,
+                                        selectedTimeSlot === time && styles.selectedTimeSlotButton
+                                    ]}
+                                    onPress={() => setSelectedTimeSlot(time)}
+                                >
+                                    <Text style={styles.timeSlotText}>{time}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                       
+
+                        {/* Confirm Booking Button */}
+                        <TouchableOpacity 
+                            style={styles.confirmBookingButton}
+                            onPress={handleBooking}
+                            disabled={!selectedDate || !selectedTimeSlot}
+                        >
+                            <Text style={styles.confirmBookingText}>Confirm Booking</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.closeButton}
+
+                        {/* Close Modal Button */}
+                        <TouchableOpacity 
+                            style={styles.closeModalButton}
                             onPress={() => setShowBookingModal(false)}
                         >
-                            <Icon name="close" size={24} color="black" />
+                            <Icon name="close" size={24} color="#1F654C" />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -415,15 +524,33 @@ const styles = StyleSheet.create({
     rating: { marginLeft: 4, fontSize: 16, color: '#666' },
     category: { fontSize: 14, fontStyle: 'italic', color: '#888', marginVertical: 8 },
     description: { fontSize: 16, lineHeight: 24, color: '#555', marginBottom: 16 },
+    bookingSection: {
+        backgroundColor: '#F0F4F8',
+        padding: 16,
+        marginTop: 16,
+        borderRadius: 12,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#1F654C',
+        marginBottom: 12,
+    },
     bookButton: {
         backgroundColor: '#1F654C',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
         padding: 12,
         borderRadius: 8,
-        alignItems: 'center',
-        marginTop: 16,
     },
-    bookButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-    ratingButton: {
+    bookButtonText: {
+        color: '#fff',
+        marginLeft: 10,
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+     ratingButton: {
         backgroundColor: '#FFD700',
         padding: 12,
         borderRadius: 8,
@@ -442,19 +569,40 @@ const styles = StyleSheet.create({
     },
     retryButtonText: { color: '#fff', fontSize: 16 },
     modalContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    modalContent: {
-        width: '90%',
         backgroundColor: '#fff',
-        borderRadius: 8,
-        padding: 16,
-        alignItems: 'center',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 20,
     },
-    modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 16 },
+    modalTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#1F654C',
+        textAlign: 'center',
+        marginBottom: 20,
+    },
+    subTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 10,
+    },
+    dateScrollView: {
+        marginBottom: 20,
+    },
+    dateButton: {
+        backgroundColor: '#E6F2EF',
+        borderRadius: 10,
+        padding: 10,
+        marginRight: 10,
+        alignItems: 'center',
+        width: 70,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold', 
+        marginBottom: 16
+    },
     messageInput: {
         width: '100%',
         height: 80,
@@ -491,6 +639,65 @@ const styles = StyleSheet.create({
         backgroundColor: '#eee',
         borderRadius: 50,
         padding: 8,
+    },
+    selectedDateButton: {
+        backgroundColor: '#1F654C',
+    },
+    dateText: {
+        color: '#1F654C',
+        fontSize: 12,
+    },
+    dateNumberText: {
+        color: '#1F654C',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    timeSlotsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        marginBottom: 20,
+    },
+    timeSlotButton: {
+        backgroundColor: '#E6F2EF',
+        borderRadius: 8,
+        padding: 10,
+        margin: 5,
+        width: '30%',
+        alignItems: 'center',
+    },
+    selectedTimeSlotButton: {
+        backgroundColor: '#1F654C',
+    },
+    timeSlotText: {
+        color: '#1F654C',
+        fontWeight: '600',
+    },
+    messageInput: {
+        backgroundColor: '#F0F4F8',
+        borderRadius: 10,
+        padding: 15,
+        marginBottom: 20,
+        height: 100,
+    },
+    confirmBookingButton: {
+        backgroundColor: '#1F654C',
+        padding: 15,
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    confirmBookingText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    closeModalButton: {
+        position: 'absolute',
+        top: 15,
+        right: 15,
+        backgroundColor: '#E6F2EF',
+        borderRadius: 20,
+        padding: 5,
     },
     starsContainer: { flexDirection: 'row', marginBottom: 16 },
     star: { marginHorizontal: 8 },

@@ -37,7 +37,7 @@ const RatingScreen = ({ route, navigation }) => {
       const { id: userId } = JSON.parse(userData);
 
       // Send a POST request to the server to add the rating
-      const response = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/ratings/add', {
+      const response = await fetch('http://192.168.1.2:5000/api/ratings/add', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

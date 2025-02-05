@@ -14,7 +14,7 @@ const AuthScreen = ({ navigation }) => {
     const handleLogin = async () => {
         try {
             // Sending login request to the server
-            const response = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/login', {
+            const response = await fetch('http://192.168.1.2:5000/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),

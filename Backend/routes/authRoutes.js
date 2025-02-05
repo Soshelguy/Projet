@@ -42,7 +42,7 @@ router.post('/validate-token', async (req, res) => {
         });
     } catch (error) {
         // If the token is invalid or expired, return a 401 error
-        res.status(401).json({ message: 'Invalid or expired token' });
+        res.status(401).json({ message: 'www Invalid or expired token' });
     }
 });
 

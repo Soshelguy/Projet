@@ -23,15 +23,15 @@ const DriverProfileScreen = ({ navigation }) => {
     const fetchDriverData = async () => {
         try {
             // Fetch driver profile details
-            const driverResponse = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/drivers/${user.id}`);
+            const driverResponse = await fetch(`http://192.168.1.2:5000/api/drivers/${user.id}`);
             const driverData = await driverResponse.json();
 
             // Fetch delivery history
-            const historyResponse = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/drivers/${user.id}/deliveries`);
+            const historyResponse = await fetch(`http://192.168.1.2:5000/api/drivers/${user.id}/deliveries`);
             const historyData = await historyResponse.json();
 
             // Fetch earnings
-            const earningsResponse = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/drivers/${user.id}/earnings`);
+            const earningsResponse = await fetch(`http://192.168.1.2:5000/api/drivers/${user.id}/earnings`);
             const earningsData = await earningsResponse.json();
 
             setDriverData(driverData);

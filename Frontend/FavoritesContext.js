@@ -56,7 +56,7 @@ export const FavoritesProvider = ({ children }) => {
             setFavoriteServices(updatedFavorites);
             
             // Sync changes with server
-            await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/favorites/toggle', {
+            await fetch('http://192.168.1.2:5000/api/favorites/toggle', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

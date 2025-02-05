@@ -48,7 +48,7 @@ const ServicesScreen = ({ navigation, route }) => {
     useEffect(() => {
         const fetchServices = async () => {
             try {
-                const response = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/services', {
+                const response = await fetch('http://192.168.1.2:5000/api/services', {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/json',

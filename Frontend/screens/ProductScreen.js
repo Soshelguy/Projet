@@ -24,7 +24,7 @@ const ProductScreen = ({ route, navigation }) => {
         // Fetch product details and similar products on component mount
         const fetchProductDetails = async () => {
             try {
-                const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/products/${productId}`);
+                const response = await fetch(`http://192.168.1.2:5000/api/products/${productId}`);
                 const data = await response.json();
                 if (response.ok) {
                     setProductDetails(data);
@@ -41,7 +41,7 @@ const ProductScreen = ({ route, navigation }) => {
 
         const fetchRelatedProducts = async (productId) => {
             try {
-                const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/products/similar/${productId}`);
+                const response = await fetch(`http://192.168.1.2:5000/api/products/similar/${productId}`);
                 const data = await response.json();
                 if (response.ok) {
                     setRelatedProducts(data);

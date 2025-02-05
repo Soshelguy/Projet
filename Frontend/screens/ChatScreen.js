@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import io from 'socket.io-client';
+import { useAuth } from '../AuthContext';
 
 /**
  * ChatScreen is a component that displays a chat conversation between
@@ -36,23 +38,31 @@ const ChatScreen = ({ route, navigation }) => {
     // Booking details are stored in the state
     const [booking, setBooking] = useState(null);
 
+    const socket = useRef(null);
+    const { authToken, user } = useAuth();
+
     // Fetch current user ID from AsyncStorage
-    useEffect(() => {
+     useEffect(() => {
         getCurrentUser();
+        socket.current = io('http://192.168.1.2:5000');
+
+        socket.current.emit('joinRoom', { roomId: bookingId });
+
+        socket.current.on('receiveMessage', (message) => {
+            setMessages((prevMessages) => [...prevMessages, message]);
+        });
+
+        return () => {
+            socket.current.disconnect();
+        };
     }, []);
 
-    // Fetch messages and booking details when the component mounts
     useEffect(() => {
         fetchMessages();
-        fetchBookingDetails();
-
-        // Fetch messages every 5 seconds
-        const interval = setInterval(fetchMessages, 5000);
-        return () => clearInterval(interval);
-    }, []);
+    }, [currentUserId]);
 
     // Fetch current user ID from AsyncStorage
-    const getCurrentUser = async () => {
+     const getCurrentUser = async () => {
         try {
             const userData = await AsyncStorage.getItem('userData');
             if (userData) {
@@ -67,7 +77,7 @@ const ChatScreen = ({ route, navigation }) => {
     // Fetch booking details from the API
     const fetchBookingDetails = async () => {
         try {
-            const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/bookings/${bookingId}`);
+            const response = await fetch(`http://192.168.1.2:5000/api/bookings/${bookingId}`);
             const data = await response.json();
             setBooking(data);
         } catch (error) {
@@ -78,37 +88,59 @@ const ChatScreen = ({ route, navigation }) => {
     // Fetch messages from the API
     const fetchMessages = async () => {
         try {
-            const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/messages/booking/${bookingId}`);
+            console.log('fetchMessages called');
+    console.log('Using bookingId:', bookingId);
+    console.log('Current user ID:', currentUserId);
+    console.log('Auth token (truncated):', authToken ? authToken.substring(0, 10) + '...' : 'No token');
+
+            const response = await fetch(`http://192.168.1.2:5000/api/messages/booking/${bookingId}`, {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            });
+
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error fetching messages:', errorText);
+                return;
+            }
+
             const data = await response.json();
             setMessages(data);
 
-            // Mark messages as read
             if (currentUserId) {
-                await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/messages/read', {
+                console.log('Marking messages as read for user:', currentUserId);
+                await fetch('http://192.168.1.2:5000/api/messages/read', {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({
                         booking_id: bookingId,
                         user_id: currentUserId
                     })
                 });
+                console.log('Read endpoint responded with status:', readResponse.status);
+
             }
         } catch (error) {
             console.error('Error fetching messages:', error);
         }
     };
-
     // Send a new message to the API
     const sendMessage = async () => {
         if (!newMessage.trim()) return;
 
         try {
-            const response = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/messages/send', {
+            const response = await fetch('http://192.168.1.2:5000/api/messages/send', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
                 },
                 body: JSON.stringify({
                     booking_id: bookingId,
@@ -119,8 +151,9 @@ const ChatScreen = ({ route, navigation }) => {
             });
 
             if (response.ok) {
+                const message = await response.json();
+                socket.current.emit('sendMessage', { roomId: bookingId, message });
                 setNewMessage('');
-                fetchMessages();
             }
         } catch (error) {
             console.error('Error sending message:', error);
@@ -143,7 +176,6 @@ const ChatScreen = ({ route, navigation }) => {
             </View>
         );
     };
-
     // Render the chat conversation
     return (
         <KeyboardAvoidingView

@@ -26,7 +26,7 @@ const NotificationsScreen = ({ navigation }) => {
       const { id } = JSON.parse(userData);
       
       // Fetch notifications from the server
-      const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/notifications/user/${id}`);
+      const response = await fetch(`http://192.168.1.2:5000/api/notifications/user/${id}`);
       const data = await response.json();
       setNotifications(data);
     } catch (error) {
@@ -40,7 +40,7 @@ const NotificationsScreen = ({ navigation }) => {
    */
   const markNotificationAsRead = async (notificationId) => {
     try {
-      await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/notifications/${notificationId}/read`, {
+      await fetch(`http://192.168.1.2:5000/api/notifications/${notificationId}/read`, {
         method: 'PUT'
       });
       fetchNotifications();

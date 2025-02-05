@@ -21,7 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * The API URL for the server
  * @type {string}
  */
-const API_URL = 'https://cf8f-197-203-19-175.ngrok-free.app';
+const API_URL = 'http://192.168.1.2:5000';
 
 /**
  * The UserOnboardingScreen component

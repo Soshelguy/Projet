@@ -17,71 +17,83 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
+const authenticateUser = require('../middleware/auth');
+const jwt = require('jsonwebtoken');
+const { SECRET_KEY } = require('../utils/token');
 
-router.post('/send', async (req, res) => {
+
+// Middleware to verify token
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) return res.status(401).json({ error: 'No token provided' });
+
+    jwt.verify(token, SECRET_KEY, (err, user) => {
+        if (err) return res.status(403).json({ error: 'ggg Invalid or expired token' });
+        req.user = { userId: user.userId, email: user.email };
+        next();
+    });
+};
+
+// Send a message
+router.post('/send', authenticateToken, async (req, res) => {
     try {
-        // Get the booking ID, sender ID, receiver ID, and message from the request
         const { booking_id, sender_id, receiver_id, message } = req.body;
 
-        // Create a new message in the database
         const newMessage = await pool.query(
             'INSERT INTO messages (booking_id, sender_id, receiver_id, message) VALUES ($1, $2, $3, $4) RETURNING *',
             [booking_id, sender_id, receiver_id, message]
         );
 
-        // Create a new notification in the database
         await pool.query(
             'INSERT INTO notifications (user_id, title, message, type) VALUES ($1, $2, $3, $4)',
             [receiver_id, 'New Message', 'You have received a new message', 'message']
         );
 
-        // Return the newly created message
         res.json(newMessage.rows[0]);
     } catch (error) {
-        // If there is an error, log it and return a server error message
         console.error('Error sending message:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
 
-router.get('/booking/:id', async (req, res) => {
+
+// Get messages for a booking
+router.get('/booking/:id', authenticateToken, async (req, res) => {
     try {
-        // Get the booking ID from the request
-        const id = req.params.id;
-
-        // Get all the messages for the booking from the database
-        const messages = await pool.query(`
-            SELECT m.*, u.name as sender_name
-            FROM messages m
-            JOIN users u ON m.sender_id = u.id
-            WHERE m.booking_id = $1
-            ORDER BY m.created_at ASC
-        `, [id]);
-
-        // Return the messages
-        res.json(messages.rows);
+      const bookingId = req.params.id;
+      console.log(`Fetching messages for booking: ${bookingId}`);
+  
+      const messages = await pool.query(`
+        SELECT m.*, u.name AS sender_name
+        FROM messages m
+        JOIN users u ON m.sender_id = u.id
+        WHERE m.booking_id = $1
+        ORDER BY m.created_at ASC
+      `, [bookingId]);
+  
+      console.log(`Found ${messages.rows.length} messages.`);
+      // Even if messages.rows is empty, that should just return [] and not an error
+      return res.json(messages.rows);
     } catch (error) {
-        // If there is an error, log it and return a server error message
-        console.error('Error getting messages:', error);
-        res.status(500).json({ message: 'Server error' });
+      console.error('Error getting messages:', error);
+      return res.status(500).json({ message: 'Server error', error: error.message });
     }
-});
+  });
 
-router.put('/read', async (req, res) => {
+// Mark messages as read
+router.put('/read', authenticateToken, async (req, res) => {
     try {
-        // Get the booking ID and user ID from the request
         const { booking_id, user_id } = req.body;
 
-        // Update all the messages for the booking to be marked as read
         await pool.query(
             'UPDATE messages SET read = true WHERE booking_id = $1 AND receiver_id = $2',
             [booking_id, user_id]
         );
 
-        // Return a success message
         res.json({ message: 'Messages marked as read' });
     } catch (error) {
-        // If there is an error, log it and return a server error message
         console.error('Error marking messages as read:', error);
         res.status(500).json({ message: 'Server error' });
     }

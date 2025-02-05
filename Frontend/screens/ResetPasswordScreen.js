@@ -21,7 +21,7 @@ const ResetPasswordScreen = ({ navigation, route }) => {
 
         try {
             // Send a request to reset the password using the provided token
-            const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/reset-password/${token}`, {
+            const response = await fetch(`http://192.168.1.2:5000/api/reset-password/${token}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

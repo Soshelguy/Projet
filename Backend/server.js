@@ -12,7 +12,8 @@ const favoriteRoutes = require('./routes/favorite');
 const usersRoutes = require('./routes/users');
 const delivererRoutes = require('./routes/delivererRoutes');
 const roleRequestRoutes = require('./routes/roleRequests');
-const path = require('path'); 
+const bookingRoutes = require('./routes/bookings');
+const messageRoutes = require('./routes/messages'); 
 const jwt = require('jsonwebtoken');
 const { generateToken, SECRET_KEY } = require('./utils/token');
 
@@ -40,8 +41,10 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/favorites', favoriteRoutes);
 app.use('/api/deliverer', delivererRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/bookings', bookingRoutes);
 app.use('/api', roleRequestRoutes);
 app.use('/api', usersRoutes);
+app.use('/api/messages', messageRoutes); 
 
 
 app.post('/signup', async (req, res) => {

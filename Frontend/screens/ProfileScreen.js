@@ -202,7 +202,7 @@ const ProfileScreen = ({ navigation }) => {
         setLoading(true);
     
         try {
-            const profileResponse = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/users/profile', {
+            const profileResponse = await fetch('http://192.168.1.2:5000/api/users/profile', {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${authToken}`,
@@ -225,7 +225,7 @@ const ProfileScreen = ({ navigation }) => {
             const profileData = await profileResponse.json();
             console.log('Fetched Profile Data:', profileData);
     
-            const rolesResponse = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/users/profile', {
+            const rolesResponse = await fetch('http://192.168.1.2:5000/api/users/profile', {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${authToken}`,
@@ -270,7 +270,7 @@ const ProfileScreen = ({ navigation }) => {
             });
     
             // Fetch services with more logging
-            const servicesResponse = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/services/user', {
+            const servicesResponse = await fetch('http://192.168.1.2:5000/api/services/user', {
                 method: 'GET',
                 headers: {
                   'Authorization': `Bearer ${authToken}`,
@@ -308,7 +308,7 @@ const ProfileScreen = ({ navigation }) => {
 
         setLoading(true);
         try {
-            const response = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/services/user', {
+            const response = await fetch('http://192.168.1.2:5000/api/services/user', {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${authToken}`,
@@ -343,7 +343,7 @@ const ProfileScreen = ({ navigation }) => {
     
     const handleDeleteService = async (serviceId) => {
         try {
-            const response = await fetch(`https://cf8f-197-203-19-175.ngrok-free.app/api/services/${serviceId}`, {
+            const response = await fetch(`http://192.168.1.2:5000/api/services/${serviceId}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${authToken}`,
@@ -437,7 +437,7 @@ const ProfileScreen = ({ navigation }) => {
                 });
             }
     
-            const response = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/users/profile', {
+            const response = await fetch('http://192.168.1.2:5000/api/users/profile', {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${authToken}`,
@@ -479,7 +479,7 @@ const ProfileScreen = ({ navigation }) => {
                     result = await becomeDeliverer();
                     break;
                 case 'SERVICE_PROVIDER':
-                    result = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/request-service-provider', {
+                    result = await fetch('http://192.168.1.2:5000/api/request-service-provider', {
                         method: 'POST',
                         body: JSON.stringify({ userId: user.id }),
                         headers: { 'Content-Type': 'application/json' },
@@ -487,7 +487,7 @@ const ProfileScreen = ({ navigation }) => {
                     result = await result.json();
                     break;
                 case 'CATERING':
-                    result = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/request-catering-business', {
+                    result = await fetch('http://192.168.1.2:5000/api/request-catering-business', {
                         method: 'POST',
                         body: JSON.stringify({ userId: user.id }),
                         headers: { 'Content-Type': 'application/json' },

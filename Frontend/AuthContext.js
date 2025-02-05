@@ -4,7 +4,7 @@ import { Text } from 'react-native';
 
 // Create AuthContext for managing authentication state
 const AuthContext = createContext();
-const API_URL = 'https://cf8f-197-203-19-175.ngrok-free.app'; 
+const API_URL = 'http://192.168.1.2:5000'; 
 
 // Provide authentication-related functionality to components
 export const AuthProvider = ({ children }) => {

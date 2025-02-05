@@ -13,7 +13,7 @@ const CategoryScreen = ({ route }) => {
         const fetchProductsByCategory = async () => {
             try {
                 // Fetch products from the API filtered by category name
-                const response = await axios.get(`https://cf8f-197-203-19-175.ngrok-free.app/api/products?name=${categoryName}`);
+                const response = await axios.get(`http://192.168.1.2:5000/api/products?name=${categoryName}`);
                 setProducts(response.data); // Update products state with fetched data
             } catch (error) {
                 console.error('Error fetching products:', error);

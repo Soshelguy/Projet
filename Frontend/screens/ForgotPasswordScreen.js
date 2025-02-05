@@ -11,7 +11,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, Alert }
  */
 const handleResetPassword = async (email) => {
     try {
-        const response = await fetch('https://cf8f-197-203-19-175.ngrok-free.app/api/forgot-password', {
+        const response = await fetch('http://192.168.1.2:5000/api/forgot-password', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvo
 import Icon from 'react-native-vector-icons/Ionicons';
 
 // Base URL for API requests
-const API_URL = 'https://cf8f-197-203-19-175.ngrok-free.app';
+const API_URL = 'http://192.168.1.2:5000';
 
 // Main component for the Change Password screen
 const ChangePasswordScreen = ({ navigation }) => {

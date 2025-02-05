@@ -29,7 +29,7 @@ const DelivererTrackingScreen = ({ route }) => {
      * If the deliverer is not found, log an error to the console.
      */
     useEffect(() => {
-        axios.get(`https://cf8f-197-203-19-175.ngrok-free.app/deliverers/${delivererId}`)
+        axios.get(`http://192.168.1.2:5000/deliverers/${delivererId}`)
             .then(response => {
                 setDelivererDetails(response.data);
             })
