@@ -16,6 +16,8 @@ const bookingRoutes = require('./routes/bookings');
 const messageRoutes = require('./routes/messages'); 
 const jwt = require('jsonwebtoken');
 const { generateToken, SECRET_KEY } = require('./utils/token');
+const path = require('path');
+
 
 const app = express();
 app.use(cors());

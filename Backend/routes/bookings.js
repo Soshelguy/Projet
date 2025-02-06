@@ -42,66 +42,66 @@ const authenticateToken = (req, res, next) => {
     */
 router.post('/create', authenticateToken, async (req, res) => {
     try {
-        const { service_id, booking_date, booking_time } = req.body;
-        const customer_id = req.user.userId; // Use userId from the token
-
-        const serviceResult = await pool.query(
-            'SELECT user_id FROM services WHERE id = $1',
-            [service_id]
-        );
-
-        if (serviceResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Service not found' });
-        }
-        const provider_id = serviceResult.rows[0].user_id;
-
-        const bookingResult = await pool.query(
-            `INSERT INTO bookings (
-                service_id, 
-                customer_id, 
-                provider_id, 
-                booking_date, 
-                booking_time, 
-                status,
-                
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING *`,
-            [
-                service_id,
-                customer_id,
-                provider_id,
-                booking_date,
-                booking_time,
-                'pending',
-            ]
-        );
-
-        const booking = bookingResult.rows[0];
-
-        await pool.query(
-            `INSERT INTO chat_rooms (booking_id, customer_id, provider_id)
-             VALUES ($1, $2, $3)`,
-            [booking.id, customer_id, provider_id]
-        );
-
-        await pool.query(
-            'INSERT INTO notifications (user_id, title, message, type, related_id) VALUES ($1, $2, $3, $4, $5)',
-            [
-                provider_id, 
-                'New Booking Request',
-                'You have received a new booking request.', 
-                'booking',
-                booking.id
-            ]
-        );
-
-        res.status(201).json(booking);
+      const { service_id, booking_date, booking_time } = req.body;
+      const customer_id = req.user.userId; // Use userId from the token
+  
+      const serviceResult = await pool.query(
+        'SELECT user_id FROM services WHERE id = $1',
+        [service_id]
+      );
+  
+      if (serviceResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Service not found' });
+      }
+      const provider_id = serviceResult.rows[0].user_id;
+  
+      // Corrected INSERT statement: removed trailing comma, matched columns to placeholders
+      const bookingResult = await pool.query(
+        `INSERT INTO bookings (
+           service_id, 
+           customer_id, 
+           provider_id, 
+           booking_date, 
+           booking_time, 
+           status
+         )
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING *`,
+        [
+          service_id,
+          customer_id,
+          provider_id,
+          booking_date,
+          booking_time,
+          'pending'
+        ]
+      );
+  
+      const booking = bookingResult.rows[0];
+  
+      await pool.query(
+        `INSERT INTO chat_rooms (booking_id, customer_id, provider_id)
+         VALUES ($1, $2, $3)`,
+        [booking.id, customer_id, provider_id]
+      );
+  
+      await pool.query(
+        'INSERT INTO notifications (user_id, title, message, type, related_id) VALUES ($1, $2, $3, $4, $5)',
+        [
+            provider_id, 
+            'New Booking Request',
+            'You have received a new booking request', // Changed to use direct string instead of message column
+            'booking',
+            booking.id
+        ]
+    );
+  
+      res.status(201).json(booking);
     } catch (error) {
-        console.error('Error creating booking:', error);
-        res.status(500).json({ error: 'Failed to create booking' });
+      console.error('Error creating booking:', error);
+      res.status(500).json({ error: 'Failed to create booking' });
     }
-});
+  });
   
 /**
  * Update the status of a booking.

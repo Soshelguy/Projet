@@ -36,67 +36,68 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// Send a message
 router.post('/send', authenticateToken, async (req, res) => {
     try {
-        const { booking_id, sender_id, receiver_id, message } = req.body;
+        const { booking_id, sender_id, receiver_id, text } = req.body;
 
+        console.log('Attempting to insert message with:', {
+            booking_id,
+            sender_id,
+            receiver_id,
+            text
+        });
+
+        // Validate required fields
+        if (!booking_id || !sender_id || !receiver_id || !text) {
+            console.log('Validation failed:', { booking_id, sender_id, receiver_id, text });
+            return res
+                .status(400)
+                .json({ error: 'Missing required fields (booking_id, sender_id, receiver_id, text).' });
+        }
+
+        // Insert the message into the messages table
         const newMessage = await pool.query(
-            'INSERT INTO messages (booking_id, sender_id, receiver_id, message) VALUES ($1, $2, $3, $4) RETURNING *',
-            [booking_id, sender_id, receiver_id, message]
+            `INSERT INTO messages 
+            (booking_id, sender_id, receiver_id, text, created_at) 
+            VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP) 
+            RETURNING *`,
+            [booking_id, sender_id, receiver_id, text]
         );
 
+        // Insert a notification for the recipient
         await pool.query(
             'INSERT INTO notifications (user_id, title, message, type) VALUES ($1, $2, $3, $4)',
             [receiver_id, 'New Message', 'You have received a new message', 'message']
         );
 
-        res.json(newMessage.rows[0]);
+        return res.json(newMessage.rows[0]);
     } catch (error) {
         console.error('Error sending message:', error);
-        res.status(500).json({ message: 'Server error' });
+        return res.status(500).json({ message: 'Server error' });
     }
 });
-
-
-// Get messages for a booking
-router.get('/booking/:id', authenticateToken, async (req, res) => {
-    try {
-      const bookingId = req.params.id;
-      console.log(`Fetching messages for booking: ${bookingId}`);
-  
-      const messages = await pool.query(`
-        SELECT m.*, u.name AS sender_name
-        FROM messages m
-        JOIN users u ON m.sender_id = u.id
-        WHERE m.booking_id = $1
-        ORDER BY m.created_at ASC
-      `, [bookingId]);
-  
-      console.log(`Found ${messages.rows.length} messages.`);
-      // Even if messages.rows is empty, that should just return [] and not an error
-      return res.json(messages.rows);
-    } catch (error) {
-      console.error('Error getting messages:', error);
-      return res.status(500).json({ message: 'Server error', error: error.message });
-    }
-  });
-
 // Mark messages as read
 router.put('/read', authenticateToken, async (req, res) => {
     try {
         const { booking_id, user_id } = req.body;
 
-        await pool.query(
+        // Log the received data
+        console.log('Received data for marking messages as read:', { booking_id, user_id });
+
+        // Validate required fields
+        if (!booking_id || !user_id) {
+            return res.status(400).json({ error: 'Missing required fields (booking_id, user_id).' });
+        }
+
+        const result = await pool.query(
             'UPDATE messages SET read = true WHERE booking_id = $1 AND receiver_id = $2',
             [booking_id, user_id]
         );
 
-        res.json({ message: 'Messages marked as read' });
+        return res.json({ message: 'Messages marked as read' });
     } catch (error) {
         console.error('Error marking messages as read:', error);
-        res.status(500).json({ message: 'Server error' });
+        return res.status(500).json({ message: 'Server error' });
     }
 });
-
 module.exports = router;
