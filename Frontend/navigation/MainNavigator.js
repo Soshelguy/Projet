@@ -92,7 +92,7 @@ const MainNavigator = () => {
                 <Stack.Screen name="ProductDetails" component={ProductScreen} />
                 <Stack.Screen name="AddService" component={AddServiceScreen} />
                 <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
-                <Stack.Screen name="Rating" component={RatingScreen} />
+                <Stack.Screen name="RatingScreen" component={RatingScreen} />
                 <Stack.Screen name="Notifications" component={NotificationsScreen} />
                 <Stack.Screen name="ChatScreen" component={ChatScreen} />
                 <Stack.Screen name="Categories" component={CategoryScreen} />

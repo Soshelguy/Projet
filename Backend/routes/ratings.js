@@ -23,7 +23,7 @@ const pool = require('../db');
  */
 router.post('/add', async (req, res) => {
     try {
-        const { service_id, user_id, rating, review } = req.body;
+        const { service_id, user_id, rating, feedback } = req.body;
         
         // Check if the user has booked and completed the service
         const bookingCheck = await pool.query(
@@ -47,8 +47,8 @@ router.post('/add', async (req, res) => {
 
         // Add the new rating to the database
         const newRating = await pool.query(
-            'INSERT INTO ratings (service_id, user_id, rating, review) VALUES ($1, $2, $3, $4) RETURNING *',
-            [service_id, user_id, rating, review]
+            'INSERT INTO ratings (service_id, user_id, rating, feedback) VALUES ($1, $2, $3, $4) RETURNING *',
+            [service_id, user_id, rating, feedback]
         );
 
         // Update the average rating and total ratings for the service
@@ -102,5 +102,6 @@ router.get('/service/:id', async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 });
+
 
 module.exports = router;

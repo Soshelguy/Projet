@@ -14,11 +14,17 @@ const delivererRoutes = require('./routes/delivererRoutes');
 const roleRequestRoutes = require('./routes/roleRequests');
 const bookingRoutes = require('./routes/bookings');
 const messageRoutes = require('./routes/messages'); 
+const ratingsRoutes = require('./routes/ratings');
 const jwt = require('jsonwebtoken');
 const { generateToken, SECRET_KEY } = require('./utils/token');
 const path = require('path');
+const http = require('http');
+const socketServer = require('./routes/socketServer');
 
-
+// Create HTTP server
+const server = http.createServer(app);
+// Initialize socket
+const io = socketServer(server);
 const app = express();
 app.use(cors());
 app.use(express.json()); 
@@ -46,8 +52,11 @@ app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api', roleRequestRoutes);
 app.use('/api', usersRoutes);
-app.use('/api/messages', messageRoutes); 
+console.log('Registering message routes...');
 
+app.use('/api/messages', messageRoutes);
+app.use('/api/ratings', ratingsRoutes);
+console.log('Routes registered');
 
 app.post('/signup', async (req, res) => {
     const { email, password, name = '', address = '', phone_number = '' } = req.body;
@@ -262,6 +271,6 @@ app.get('/check/:userId', async (req, res) => {
     }
 });
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

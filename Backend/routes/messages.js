@@ -30,46 +30,38 @@ const authenticateToken = (req, res, next) => {
     if (!token) return res.status(401).json({ error: 'No token provided' });
 
     jwt.verify(token, SECRET_KEY, (err, user) => {
-        if (err) return res.status(403).json({ error: 'ggg Invalid or expired token' });
+        if (err) return res.status(403).json({ error: 'Invalid or expired token' });
         req.user = { userId: user.userId, email: user.email };
         next();
     });
 };
-
 router.post('/send', authenticateToken, async (req, res) => {
     try {
         const { booking_id, sender_id, receiver_id, text } = req.body;
 
-        console.log('Attempting to insert message with:', {
-            booking_id,
-            sender_id,
-            receiver_id,
-            text
-        });
+        // First get chat room ID for this booking
+        const chatRoomResult = await pool.query(
+            'SELECT id FROM chat_rooms WHERE booking_id = $1',
+            [booking_id]
+        );
 
-        // Validate required fields
-        if (!booking_id || !sender_id || !receiver_id || !text) {
-            console.log('Validation failed:', { booking_id, sender_id, receiver_id, text });
-            return res
-                .status(400)
-                .json({ error: 'Missing required fields (booking_id, sender_id, receiver_id, text).' });
+        // If chat room doesn't exist, return error
+        if (chatRoomResult.rows.length === 0) {
+            return res.status(400).json({ message: 'No chat room found for this booking' });
         }
 
-        // Insert the message into the messages table
+        const chat_room_id = chatRoomResult.rows[0].id;
+
+        // Insert message with chat_room_id
         const newMessage = await pool.query(
             `INSERT INTO messages 
-            (booking_id, sender_id, receiver_id, text, created_at) 
-            VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP) 
+            (booking_id, sender_id, receiver_id, text, created_at, chat_room_id) 
+            VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, $5) 
             RETURNING *`,
-            [booking_id, sender_id, receiver_id, text]
+            [booking_id, sender_id, receiver_id, text, chat_room_id]
         );
-
-        // Insert a notification for the recipient
-        await pool.query(
-            'INSERT INTO notifications (user_id, title, message, type) VALUES ($1, $2, $3, $4)',
-            [receiver_id, 'New Message', 'You have received a new message', 'message']
-        );
-
+        
+        console.log('Inserted message with chat_room_id:', newMessage.rows[0]);
         return res.json(newMessage.rows[0]);
     } catch (error) {
         console.error('Error sending message:', error);
@@ -98,6 +90,33 @@ router.put('/read', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Error marking messages as read:', error);
         return res.status(500).json({ message: 'Server error' });
+    }
+});
+
+
+// Update booking messages route
+router.get('/booking/:id', authenticateToken, async (req, res) => {
+    try {
+        const bookingId = req.params.id;
+        console.log('API: Fetching messages for booking:', bookingId);
+
+        const messages = await pool.query(
+            `SELECT m.*, 
+             u1.full_name as sender_name,
+             u2.full_name as receiver_name
+             FROM messages m
+             LEFT JOIN users u1 ON m.sender_id = u1.id
+             LEFT JOIN users u2 ON m.receiver_id = u2.id
+             WHERE m.booking_id = $1 
+             ORDER BY m.created_at ASC`,
+            [bookingId]
+        );
+
+        console.log(`API: Found ${messages.rows.length} messages`);
+        return res.json(messages.rows);
+    } catch (error) {
+        console.error('API Error:', error);
+        return res.status(500).json({ error: 'Failed to fetch messages' });
     }
 });
 module.exports = router;
