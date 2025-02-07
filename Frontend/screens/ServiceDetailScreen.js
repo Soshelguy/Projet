@@ -23,6 +23,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFavorites } from '../FavoritesContext';
 import { useAuth } from '../AuthContext';
 import moment from 'moment';
+import ServiceBookingModal from '../components/ServiceBookingModal';
 
 const ServiceDetailScreen = ({ route, navigation }) => {
     const { serviceId } = route.params;
@@ -42,11 +43,16 @@ const ServiceDetailScreen = ({ route, navigation }) => {
     const { authToken, user } = useAuth();
     const [selectedDate, setSelectedDate] = useState(null);
     const [selectedTimeSlot, setSelectedTimeSlot] = useState(null);
+    const [unavailableSlots, setUnavailableSlots] = useState([]);
+    const [loadingSlots, setLoadingSlots] = useState(true);
+
     useEffect(() => {
         getCurrentUser();
         if (serviceId) {
             fetchServiceDetails();
             fetchUserBookings();
+            fetchUnavailableSlots();
+
         }
     }, [serviceId]);
     // Check user on mount or whenever user changes (e.g. re-login)
@@ -94,6 +100,48 @@ const ServiceDetailScreen = ({ route, navigation }) => {
             setError('Failed to get user data');
         }
     };
+
+    const fetchUnavailableSlots = async () => {
+        setLoadingSlots(true);
+        try {
+            const response = await fetch(`http://192.168.1.2:5000/api/bookings/unavailable-slots/${serviceId}`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+    
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('Non-JSON response:', text);
+                throw new Error('Invalid response format from server');
+            }
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to fetch unavailable slots');
+            }
+            
+            const data = await response.json();
+            if (!Array.isArray(data)) {
+                throw new Error('Invalid data format received');
+            }
+    
+            setUnavailableSlots(data);
+        } catch (error) {
+            console.error('Error fetching unavailable slots:', error);
+            setUnavailableSlots([]);
+            Alert.alert(
+                'Error',
+                'Failed to load available time slots. Please try again later.'
+            );
+        } finally {
+            setLoadingSlots(false);
+        }
+    };
     // Generate available time slots
     const generateTimeSlots = () => {
         const slots = [
@@ -103,14 +151,33 @@ const ServiceDetailScreen = ({ route, navigation }) => {
         ];
         return slots;
     };
+    const isDateFullyBooked = (date) => {
+        const formattedDate = moment(date).format('YYYY-MM-DD');
+        const slotsForDate = unavailableSlots.filter(slot => slot.date === formattedDate);
+        const totalTimeSlots = generateTimeSlots().length;
+        return slotsForDate.length >= totalTimeSlots;
+    };
 
     // Generate next 7 days for booking
     const generateAvailableDates = () => {
         const dates = [];
         for (let i = 0; i < 7; i++) {
-            dates.push(moment().add(i, 'days'));
+            const date = moment().add(i, 'days');
+            dates.push({
+                date: date,
+                isAvailable: !isDateFullyBooked(date)
+            });
         }
         return dates;
+    };
+    const isSlotUnavailable = (date, time) => {
+        if (!date || !time || !Array.isArray(unavailableSlots)) return false;
+        
+        const formattedDate = moment(date).format('YYYY-MM-DD');
+        return unavailableSlots.some(slot => 
+            slot.date === formattedDate && 
+            slot.time === time
+        );
     };
     const fetchServiceDetails = async () => {
         try {
@@ -139,88 +206,77 @@ const ServiceDetailScreen = ({ route, navigation }) => {
 
     // Fetch the user's bookings from the API
     const fetchUserBookings = async () => {
+        if (!currentUserId) return;
+        
         try {
-            const response = await fetch(`http://192.168.1.2:5000/api/services/bookings/user/${currentUserId}`, {
+            const response = await fetch(`http://192.168.1.2:5000/api/bookings/user/${currentUserId}`, {
                 headers: {
-                    'user-id': currentUserId 
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
                 }
             });
-            if (!response.ok) throw new Error('Failed to fetch bookings');
-
             
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to fetch bookings');
+            }
+    
             const bookings = await response.json();
             setUserBookings(bookings);
             
             const hasCompletedBooking = bookings.some(
-                booking => booking.service_id === serviceId && booking.status === 'completed'
+                booking => booking.service_id === parseInt(serviceId) && 
+                          booking.status === 'completed'
             );
             setCanRate(hasCompletedBooking);
         } catch (error) {
             console.error('Error fetching bookings:', error);
+            Alert.alert('Error', 'Failed to fetch booking history');
         }
     };
-
+      
+        
     // Check if the user has completed a booking for this service
-    const handleBooking = async () => {
-        try {
-            if (!user) {
-                Alert.alert('Error', 'Please log in to book services');
-                return;
-            }
-    
-            // Validate booking details
-            if (!selectedDate || !selectedTimeSlot) {
-                Alert.alert('Error', 'Please select a date and time');
-                return;
-            }
-    
-            const bookingData = {
-                service_id: serviceId,
-                booking_date: moment(selectedDate).format('YYYY-MM-DD'),
-                booking_time: selectedTimeSlot
-            };
-    
-            console.log('Preparing to send booking data:', bookingData);
-    
-            // Ensure the token is valid and not expired
-            if (!authToken) {
-                Alert.alert('Error', 'Authentication token is missing');
-                return;
-            }
-    
-            const response = await fetch('http://192.168.1.2:5000/api/bookings/create', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`
-                },
-                body: JSON.stringify(bookingData)
-            });
-    
-            console.log('Booking response status:', response.status);
-            if (!response.ok) {
-                const errorBody = await response.text();
-                console.log('Booking error body:', errorBody);
-                throw new Error('Booking creation failed');
-            }
-    
-            const booking = await response.json();
-            console.log('Booking created successfully:', booking);
-    
-            // Reset states and close modal
-            setShowBookingModal(false);
-            setSelectedDate(null);
-            setSelectedTimeSlot('');
-    
-            Alert.alert('Booking Successful', 'Your booking has been submitted.');
-    
-            // Navigate to ChatScreen
-            navigation.navigate('ChatScreen', { bookingId: booking.id, serviceId, providerId: service.user_id });
-        } catch (error) {
-            console.error('Error creating booking:', error);
-            Alert.alert('Error', 'Failed to create booking.');
+   // Update handleBooking to accept booking details as parameter
+const handleBooking = async (bookingDetails) => {
+    try {
+        if (!user) {
+            Alert.alert('Error', 'Please log in to book services');
+            return;
         }
-    };
+
+        const bookingData = {
+            service_id: serviceId,
+            booking_date: bookingDetails.booking_date,
+            booking_time: bookingDetails.booking_time
+        };
+
+        const response = await fetch('http://192.168.1.2:5000/api/bookings/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(bookingData)
+        });
+
+        if (!response.ok) {
+            throw new Error('Booking creation failed');
+        }
+
+        const booking = await response.json();
+        setShowBookingModal(false);
+        Alert.alert('Booking Successful', 'Your booking has been submitted.');
+        navigation.navigate('ChatScreen', { 
+            bookingId: booking.id, 
+            serviceId, 
+            providerId: service.user_id 
+        });
+    } catch (error) {
+        console.error('Error creating booking:', error);
+        Alert.alert('Error', 'Failed to create booking.');
+    }
+};
 
     const handleRating = async () => {
         try {
@@ -257,13 +313,20 @@ const ServiceDetailScreen = ({ route, navigation }) => {
         }
     };
     const checkBookingStatus = async () => {
+        if (!user?.id) return;
+        
         try {
-            const response = await fetch(`http://192.168.1.2:5000/api/services/bookings/user`, {
+            const response = await fetch(`http://192.168.1.2:5000/api/bookings/user/${user.id}`, {
                 headers: {
-                    'user-id': user.id.toString()
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
                 }
             });
-            if (!response.ok) throw new Error('Failed to check booking status');
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to check booking status');
+            }
             
             const bookings = await response.json();
             const completed = bookings.some(
@@ -273,6 +336,7 @@ const ServiceDetailScreen = ({ route, navigation }) => {
             setHasCompletedBooking(completed);
         } catch (error) {
             console.error('Error checking booking status:', error);
+            Alert.alert('Error', 'Failed to check booking status');
         }
     };
 
@@ -326,7 +390,7 @@ const ServiceDetailScreen = ({ route, navigation }) => {
   if (!service) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Service not found</Text>
+        <Text style={styles.errorText}>Service ot found</Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => navigation.goBack()}>
           <Text style={styles.retryButtonText}>Go Back</Text>
         </TouchableOpacity>
@@ -393,75 +457,35 @@ const ServiceDetailScreen = ({ route, navigation }) => {
 
            {/* Booking Modal with Calendar and Time Slots */}
            <Modal
-                visible={showBookingModal}
-                transparent={true}
-                animationType="slide"
-                onRequestClose={() => setShowBookingModal(false)}
+    visible={showBookingModal}
+    transparent={true}
+    animationType="slide"
+    onRequestClose={() => setShowBookingModal(false)}
+>
+    <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+            <TouchableOpacity 
+                style={styles.closeModalButton}
+                onPress={() => setShowBookingModal(false)}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContainer}>
-                        <Text style={styles.modalTitle}>Book Your Service</Text>
-                        
-                        {/* Date Selection */}
-                        <Text style={styles.subTitle}>Select Date</Text>
-                        <ScrollView 
-                            horizontal 
-                            showsHorizontalScrollIndicator={false}
-                            style={styles.dateScrollView}
-                        >
-                            {generateAvailableDates().map((date) => (
-                                <TouchableOpacity
-                                    key={date.format('YYYY-MM-DD')}
-                                    style={[
-                                        styles.dateButton,
-                                        selectedDate && selectedDate.isSame(date, 'day') && styles.selectedDateButton
-                                    ]}
-                                    onPress={() => setSelectedDate(date)}
-                                >
-                                    <Text style={styles.dateText}>{date.format('ddd')}</Text>
-                                    <Text style={styles.dateNumberText}>{date.format('D')}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-
-                        {/* Time Slot Selection */}
-                        <Text style={styles.subTitle}>Select Time</Text>
-                        <View style={styles.timeSlotsContainer}>
-                            {generateTimeSlots().map((time) => (
-                                <TouchableOpacity
-                                    key={time}
-                                    style={[
-                                        styles.timeSlotButton,
-                                        selectedTimeSlot === time && styles.selectedTimeSlotButton
-                                    ]}
-                                    onPress={() => setSelectedTimeSlot(time)}
-                                >
-                                    <Text style={styles.timeSlotText}>{time}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-
-                       
-
-                        {/* Confirm Booking Button */}
-                        <TouchableOpacity 
-                            style={styles.confirmBookingButton}
-                            onPress={handleBooking}
-                            disabled={!selectedDate || !selectedTimeSlot}
-                        >
-                            <Text style={styles.confirmBookingText}>Confirm Booking</Text>
-                        </TouchableOpacity>
-
-                        {/* Close Modal Button */}
-                        <TouchableOpacity 
-                            style={styles.closeModalButton}
-                            onPress={() => setShowBookingModal(false)}
-                        >
-                            <Icon name="close" size={24} color="#1F654C" />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
+                <Icon name="close" size={24} color="#1F654C" />
+            </TouchableOpacity>
+            
+            <ServiceBookingModal
+                visible={showBookingModal}
+                onClose={() => setShowBookingModal(false)}
+                onConfirm={(date, time) => {
+                    handleBooking({
+                        booking_date: moment(date).format('YYYY-MM-DD'),
+                        booking_time: time
+                    });
+                }}
+                serviceId={serviceId}
+                authToken={authToken}
+            />
+        </View>
+    </View>
+</Modal>
 
             {/* Rating Modal */}
             <Modal
@@ -513,17 +537,80 @@ const ServiceDetailScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
-    image: { width: '100%', height: 250, resizeMode: 'cover' },
-    header: { flexDirection: 'row', justifyContent: 'space-between', padding: 16 },
-    title: { fontSize: 20, fontWeight: 'bold', color: '#333', flex: 1 },
-    favoriteButton: { marginLeft: 16 },
-    detailsContainer: { padding: 16 },
-    price: { fontSize: 18, fontWeight: 'bold', color: '#1F654C', marginVertical: 8 },
-    ratingContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 8 },
-    rating: { marginLeft: 4, fontSize: 16, color: '#666' },
-    category: { fontSize: 14, fontStyle: 'italic', color: '#888', marginVertical: 8 },
-    description: { fontSize: 16, lineHeight: 24, color: '#555', marginBottom: 16 },
+    container: { 
+        flex: 1, 
+        backgroundColor: '#fff' 
+    },
+    image: { 
+        width: '100%', 
+        height: 250, 
+        resizeMode: 'cover' 
+    },
+    header: { 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        padding: 16 
+    },
+    title: { 
+        fontSize: 20, 
+        fontWeight: 'bold', 
+        color: '#333', 
+        flex: 1 
+    },
+    favoriteButton: {
+        marginLeft: 16 
+    },
+    detailsContainer: { 
+        padding: 16 
+    },
+    price: { 
+        fontSize: 18, 
+        fontWeight: 'bold', 
+        color: '#1F654C', 
+        marginVertical: 8 
+    },
+    ratingContainer: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        marginVertical: 8 
+    },
+    rating: { 
+        marginLeft: 4, 
+        fontSize: 16, 
+        color: '#666' 
+    },
+    category: { 
+        fontSize: 14, 
+        fontStyle: 'italic', 
+        color: '#888', 
+        marginVertical: 8 
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        paddingTop: 20,
+        paddingHorizontal: 20,
+        paddingBottom: 40,
+        maxHeight: '80%',
+    },
+    closeModalButton: {
+        position: 'absolute',
+        right: 20,
+        top: 20,
+        zIndex: 1,
+    },
+    description: { 
+        fontSize: 16, 
+        lineHeight: 24, 
+        color: '#555', 
+        marginBottom: 16 
+    },
     bookingSection: {
         backgroundColor: '#F0F4F8',
         padding: 16,
@@ -535,6 +622,47 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#1F654C',
         marginBottom: 12,
+    },
+    unavailableTimeSlot: {
+        backgroundColor: '#f5f5f5',
+        borderColor: '#ddd',
+        opacity: 0.7
+    },
+    unavailableTimeSlotText: {
+        color: '#999'
+    },
+    selectedTimeSlotText: {
+        color: '#ffffff'
+    },
+    timeSlotsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        padding: 10
+    },
+    unavailableDateButton: {
+        backgroundColor: '#f5f5f5',
+        opacity: 0.7,
+        borderColor: '#ddd'
+    },
+    unavailableDateText: {
+        color: '#999'
+    },
+    unavailableTimeSlot: {
+        backgroundColor: '#f5f5f5',
+        opacity: 0.7,
+        borderColor: '#FF4444'
+    },
+    unavailableTimeSlotText: {
+        color: '#999'
+    },
+    selectedTimeSlotTextWhite: {
+        color: '#ffffff',
+    },
+    unavailableIcon: {
+        position: 'absolute',
+        top: 5,
+        right: 5,
     },
     bookButton: {
         backgroundColor: '#1F654C',

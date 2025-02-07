@@ -103,6 +103,34 @@ router.post('/create', authenticateToken, async (req, res) => {
     }
   });
   
+
+  // Update the unavailable slots endpoint to handle errors better
+router.get('/unavailable-slots/:serviceId', async (req, res) => {
+  try {
+      if (!req.params.serviceId) {
+          return res.status(400).json({ error: 'Service ID is required' });
+      }
+
+      const result = await pool.query(
+          `SELECT booking_date::text, booking_time 
+           FROM bookings 
+           WHERE service_id = $1 
+           AND status IN ('pending', 'confirmed')
+           AND booking_date >= CURRENT_DATE`,
+          [req.params.serviceId]
+      );
+      
+      const unavailableSlots = result.rows.map(row => ({
+          date: row.booking_date,
+          time: row.booking_time
+      }));
+
+      res.json(unavailableSlots);
+  } catch (error) {
+      console.error('Error getting unavailable slots:', error);
+      res.status(500).json({ error: 'Failed to fetch unavailable slots', details: error.message });
+  }
+});
 /**
  * Update the status of a booking.
  * @param {number} req.params.id - The ID of the booking.

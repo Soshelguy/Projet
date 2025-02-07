@@ -21,11 +21,12 @@ const path = require('path');
 const http = require('http');
 const socketServer = require('./routes/socketServer');
 
+const app = express();
+
 // Create HTTP server
 const server = http.createServer(app);
 // Initialize socket
 const io = socketServer(server);
-const app = express();
 app.use(cors());
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
