@@ -30,6 +30,7 @@ import OrderTrackingScreen from '../screens/OrderTrackingScreen';
 import OrderHistoryScreen from '../screens/OrderHistoryScreen';
 import PaymentMethodsScreen from '../screens/PaymentMethodsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import ServiceBookingsScreen from '../screens/ServiceBookingsScreen';
 import OrderConfirmationScreen from '../screens/OrderConfirmationScreen';
 import { useAuth } from '../AuthContext';
 
@@ -95,6 +96,7 @@ const MainNavigator = () => {
                 <Stack.Screen name="RatingScreen" component={RatingScreen} />
                 <Stack.Screen name="Notifications" component={NotificationsScreen} />
                 <Stack.Screen name="ChatScreen" component={ChatScreen} />
+                <Stack.Screen name="ServiceBookings"  component={ServiceBookingsScreen} options={{title: 'Service Bookings', headerStyle: {  backgroundColor: '#1F654C',  }, headerTintColor: '#fff' }}/>
                 <Stack.Screen name="Categories" component={CategoryScreen} />
                 <Stack.Screen name="CategoryDetailScreen" component={CategoryDetailScreen} />
                 <Stack.Screen name="SubcategoryScreen" component={SubcategoryScreen} />

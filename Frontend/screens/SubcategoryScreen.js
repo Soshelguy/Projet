@@ -163,12 +163,15 @@ const SubcategoryScreen = ({ route }) => {
                   <View style={styles.servicesGrid}>
                     {services[subSubcategory].map((service) => (
                       <TouchableOpacity 
-                        key={service.id}
-                        style={styles.serviceCard}
-                        onPress={() => {
-                          // Navigate to service details screen if needed
-                        }}
-                      >
+                      key={service.id}
+                      style={styles.serviceCard}
+                      onPress={() => {
+                        navigation.navigate('ServiceDetailScreen', { 
+                          serviceId: service.id,
+                          service: service
+                        });
+                      }}
+                    >
                         <Image
                           source={{ uri: service.image }} // Ensure 'service.image' is a valid URL
                           style={styles.serviceImage}

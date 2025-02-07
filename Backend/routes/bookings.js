@@ -191,5 +191,36 @@ router.get('/user/:id', async (req, res) => {
       res.status(500).json({ message: 'Server error' });
     }
   });
-  
+  // Add service bookings endpoint
+  router.get('/service/:serviceId', authenticateToken, async (req, res) => {
+    try {
+        console.log('ServiceID:', req.params.serviceId);
+        console.log('UserID:', req.user.userId);
+
+        const bookings = await pool.query(
+            `SELECT 
+                b.id,
+                b.booking_date,
+                b.booking_time,
+                b.status,
+                b.customer_id,
+                u.full_name as customer_name,
+                COALESCE(u.profile_image_url, 'https://via.placeholder.com/50') as customer_image
+             FROM bookings b
+             JOIN users u ON b.customer_id = u.id
+             WHERE b.service_id = $1
+             ORDER BY b.booking_date DESC, b.booking_time DESC`,
+            [req.params.serviceId]
+        );
+
+        console.log('Bookings found:', bookings.rows.length);
+        res.json(bookings.rows);
+    } catch (error) {
+        console.error('Database error:', error);
+        res.status(500).json({ 
+            error: 'Failed to fetch bookings',
+            details: error.message 
+        });
+    }
+});
   module.exports = router;

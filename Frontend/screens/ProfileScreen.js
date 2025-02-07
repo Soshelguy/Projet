@@ -639,7 +639,10 @@ const ProfileScreen = ({ navigation }) => {
     };
 
     const renderServiceItem = ({ item }) => (
-        <View style={styles.serviceItem}>
+        <TouchableOpacity 
+        style={styles.serviceItem}
+        onPress={() => navigation.navigate('ServiceBookings', { service: item })}
+    >
             <Image 
                 source={{ uri: item.image || 'https://via.placeholder.com/150' }} 
                 style={styles.serviceImage} 
@@ -675,7 +678,7 @@ const ProfileScreen = ({ navigation }) => {
                     </TouchableOpacity>
                 </View>
             </View>
-        </View>
+            </TouchableOpacity>
     );
     
     const renderServicesSection = () => {

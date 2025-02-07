@@ -53,7 +53,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api', roleRequestRoutes);
 app.use('/api', usersRoutes);
-console.log('Registering message routes...');
 
 app.use('/api/messages', messageRoutes);
 app.use('/api/ratings', ratingsRoutes);
