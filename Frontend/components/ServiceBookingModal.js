@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import moment from 'moment';
 
@@ -77,6 +77,54 @@ const isDateFullyBooked = (date) => {
     const totalTimeSlots = generateTimeSlots().length;
     return slotsForDate.length >= totalTimeSlots;
 };
+ // Disable time selection if no date is selected
+ const renderTimeSlots = () => {
+  if (!selectedDate) {
+      return (
+          <View style={styles.messageContainer}>
+              <Text style={styles.messageText}>
+                  Please select a date first
+              </Text>
+          </View>
+      );
+  }
+
+  return (
+      <View style={styles.timeGrid}>
+          {generateTimeSlots().map((time) => {
+              const unavailable = isSlotUnavailable(selectedDate, time);
+              return (
+                  <TouchableOpacity
+                      key={time}
+                      style={[
+                          styles.timeSlotButton,
+                          selectedTimeSlot === time && styles.selectedTimeSlotButton,
+                          unavailable && styles.unavailableTimeSlot
+                      ]}
+                      onPress={() => !unavailable && setSelectedTimeSlot(time)}
+                      disabled={unavailable}
+                  >
+                      <Text style={[
+                          styles.timeSlotText,
+                          selectedTimeSlot === time && styles.selectedTimeSlotTextWhite,
+                          unavailable && styles.unavailableTimeSlotText
+                      ]}>
+                          {time}
+                      </Text>
+                      {unavailable && (
+                          <Icon 
+                              name="close-circle" 
+                              size={16} 
+                              color="#FF4444" 
+                              style={styles.unavailableIcon} 
+                          />
+                      )}
+                  </TouchableOpacity>
+              );
+          })}
+      </View>
+  );
+};
 
   const generateAvailableDates = () => {
     const dates = [];
@@ -125,39 +173,8 @@ const isDateFullyBooked = (date) => {
       </ScrollView>
 
       <Text style={styles.title}>Select Time</Text>
-      <View style={styles.timeGrid}>
-      {generateTimeSlots().map((time) => {
-    const unavailable = isSlotUnavailable(selectedDate, time);
-    return (
-        <TouchableOpacity
-            key={time}
-            style={[
-                styles.timeSlotButton,
-                selectedTimeSlot === time && styles.selectedTimeSlotButton,
-                unavailable && styles.unavailableTimeSlot
-            ]}
-            onPress={() => !unavailable && setSelectedTimeSlot(time)}
-            disabled={unavailable}
-        >
-            <Text style={[
-                styles.timeSlotText,
-                selectedTimeSlot === time && styles.selectedTimeSlotTextWhite,
-                unavailable && styles.unavailableTimeSlotText
-            ]}>
-                {time}
-            </Text>
-            {unavailable && (
-                <Icon 
-                    name="close-circle" 
-                    size={16} 
-                    color="#FF4444" 
-                    style={styles.unavailableIcon} 
-                />
-            )}
-        </TouchableOpacity>
-    );
-})}
-      </View>
+      {renderTimeSlots()}
+
 
       <TouchableOpacity
         style={[
@@ -172,7 +189,20 @@ const isDateFullyBooked = (date) => {
     </View>
   );
 };
-
+ // Add these styles
+ const additionalStyles = StyleSheet.create({
+  messageContainer: {
+      padding: 20,
+      alignItems: 'center',
+      backgroundColor: '#f5f5f5',
+      borderRadius: 8,
+      marginVertical: 10
+  },
+  messageText: {
+      color: '#666',
+      fontSize: 16
+  }
+});
 const styles = {
   container: {
     padding: 20,
@@ -184,7 +214,7 @@ const styles = {
     fontWeight: 'bold',
     marginBottom: 15,
   },
-  unavailableOverlay: {
+   unavailableOverlay: {
     position: 'absolute',
     top: '50%',
     left: '50%',

@@ -45,6 +45,21 @@ router.post('/create', authenticateToken, async (req, res) => {
       const { service_id, booking_date, booking_time } = req.body;
       const customer_id = req.user.userId; // Use userId from the token
   
+       // Check if user already has ANY active booking for this service
+       const existingBooking = await pool.query(
+        `SELECT id FROM bookings 
+         WHERE service_id = $1 
+         AND customer_id = $2 
+         AND status IN ('pending', 'confirmed')`,
+        [service_id, customer_id]
+    );
+
+    if (existingBooking.rows.length > 0) {
+      return res.status(400).json({ 
+          status: 'DUPLICATE_BOOKING',
+          message: 'You already have an active booking for this service. Please wait until your current booking is completed.'
+      });
+  }
       const serviceResult = await pool.query(
         'SELECT user_id FROM services WHERE id = $1',
         [service_id]
@@ -191,8 +206,8 @@ router.get('/user/:id', async (req, res) => {
       res.status(500).json({ message: 'Server error' });
     }
   });
-  // Add service bookings endpoint
-  router.get('/service/:serviceId', authenticateToken, async (req, res) => {
+   // Add service bookings endpoint
+   router.get('/service/:serviceId', authenticateToken, async (req, res) => {
     try {
         console.log('ServiceID:', req.params.serviceId);
         console.log('UserID:', req.user.userId);

@@ -237,11 +237,26 @@ const ServiceDetailScreen = ({ route, navigation }) => {
       
         
     // Check if the user has completed a booking for this service
-   // Update handleBooking to accept booking details as parameter
+// Update handleBooking function
 const handleBooking = async (bookingDetails) => {
     try {
         if (!user) {
             Alert.alert('Error', 'Please log in to book services');
+            return;
+        }
+
+        // Check for existing active booking
+        const existingBooking = userBookings.find(
+            booking => booking.service_id === parseInt(serviceId) && 
+            ['pending', 'confirmed'].includes(booking.status)
+        );
+
+        if (existingBooking) {
+            Alert.alert(
+                'Booking Failed', 
+                'You already have an active booking for this service. Please wait until your current booking is completed.'
+            );
+            setShowBookingModal(false);
             return;
         }
 
@@ -260,21 +275,32 @@ const handleBooking = async (bookingDetails) => {
             body: JSON.stringify(bookingData)
         });
 
+        const data = await response.json();
+        
         if (!response.ok) {
-            throw new Error('Booking creation failed');
+            if (data.status === 'DUPLICATE_BOOKING') {
+                // Handle validation message (not an error)
+                Alert.alert('Booking Status', data.message);
+                setShowBookingModal(false);
+                return;
+            }
+            // Handle actual errors
+            throw new Error(data.error || 'Booking creation failed');
         }
 
-        const booking = await response.json();
         setShowBookingModal(false);
         Alert.alert('Booking Successful', 'Your booking has been submitted.');
         navigation.navigate('ChatScreen', { 
-            bookingId: booking.id, 
+            bookingId: data.id, 
             serviceId, 
             providerId: service.user_id 
         });
+
     } catch (error) {
-        console.error('Error creating booking:', error);
-        Alert.alert('Error', 'Failed to create booking.');
+        if (!error.message?.includes('active booking')) {
+            console.error('Error creating booking:', error);
+        }
+        Alert.alert('Error', error.message || 'Failed to create booking.');
     }
 };
 
