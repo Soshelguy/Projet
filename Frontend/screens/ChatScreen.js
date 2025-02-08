@@ -15,6 +15,7 @@ import { useAuth } from '../AuthContext';
 
 const ChatScreen = ({ route, navigation }) => {
     const { bookingId, serviceId, providerId } = route.params;
+    const [isProvider, setIsProvider] = useState(false);
 
     const [currentUserId, setCurrentUserId] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -30,6 +31,51 @@ const ChatScreen = ({ route, navigation }) => {
         }
     }, [user]);
 
+    useEffect(() => {
+        if (user) {
+            setCurrentUserId(user.id);
+            setIsProvider(user.id === providerId);
+        }
+    }, [user, providerId]);
+
+    useEffect(() => {
+        const fetchBookingDetails = async () => {
+            try {
+                const response = await fetch(
+                    `http://192.168.1.2:5000/api/bookings/${bookingId}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+        
+                // Check content type
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text);
+                    throw new Error('Invalid server response');
+                }
+        
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to fetch booking');
+                }
+        
+                const data = await response.json();
+                setBooking(data);
+            } catch (error) {
+                console.error('Error fetching booking:', error);
+            }
+        };
+    
+        if (bookingId && authToken) {
+            fetchBookingDetails();
+        }
+    }, [bookingId, authToken]);
     useEffect(() => {
         if (currentUserId) {
             fetchMessages();
@@ -99,18 +145,31 @@ useEffect(() => {
         }
     };
 
-   // Update sendMessage function
+   // sendMessage function
    const sendMessage = async () => {
     if (!newMessage.trim()) return;
 
     try {
-        const messageContent = newMessage.trim();
-        console.log('Sending message with data:', {
+        // Ensure booking is loaded
+        if (!booking) {
+            console.error('No booking data available');
+            return;
+        }
+
+        // Determine receiver_id based on role
+        const receiverId = isProvider ? booking.customer_id : booking.provider_id;
+
+        // Log for debugging
+        console.log('Sending message with:', {
             booking_id: bookingId,
             sender_id: currentUserId,
-            receiver_id: currentUserId === providerId ? booking.customer_id : providerId,
-            text: messageContent
+            receiver_id: receiverId,
+            text: newMessage.trim()
         });
+
+        if (!receiverId) {
+            throw new Error('Could not determine message recipient');
+        }
 
         const response = await fetch('http://192.168.1.2:5000/api/messages/send', {
             method: 'POST',
@@ -121,27 +180,27 @@ useEffect(() => {
             body: JSON.stringify({
                 booking_id: bookingId,
                 sender_id: currentUserId,
-                receiver_id: currentUserId === providerId ? booking.customer_id : providerId,
-                text: messageContent
+                receiver_id: receiverId,
+                text: newMessage.trim()
             })
         });
 
-        if (response.ok) {
-            const sentMessage = await response.json();
-            console.log('Message sent successfully:', sentMessage);
-            socket.current.emit('sendMessage', { 
-                roomId: bookingId, 
-                message: sentMessage 
-            });
-            setNewMessage('');
-            setMessages(prevMessages => [...prevMessages, sentMessage]);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to send message');
         }
+
+        const sentMessage = await response.json();
+        setNewMessage('');
+        setMessages(prevMessages => [...prevMessages, sentMessage]);
+
     } catch (error) {
         console.error('Error sending message:', error);
+        Alert.alert('Error', 'Failed to send message');
     }
 };
 
-    // Update the renderMessage function
+    //  renderMessage function
 
 const renderMessage = ({ item }) => {
     const isCurrentUser = item.sender_id === currentUserId;
@@ -166,9 +225,17 @@ const renderMessage = ({ item }) => {
             keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
         >
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.navigate('RatingScreen', { serviceId, bookingId })}>
-                    <Icon name="close" size={40} color="#000" style={styles.exitButton}/>
-                </TouchableOpacity>
+                <TouchableOpacity 
+                    onPress={() => {
+                        if (!isProvider && booking?.status === 'completed') {
+                            navigation.navigate('RatingScreen', { serviceId, bookingId });
+                        } else {
+                            navigation.goBack();
+                        }
+                    }}
+    >
+        <Icon name="close" size={40} color="#000" style={styles.exitButton}/>
+    </TouchableOpacity>
             </View>
             <FlatList
                 ref={flatListRef}

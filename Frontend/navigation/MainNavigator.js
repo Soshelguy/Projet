@@ -95,8 +95,20 @@ const MainNavigator = () => {
                 <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
                 <Stack.Screen name="RatingScreen" component={RatingScreen} />
                 <Stack.Screen name="Notifications" component={NotificationsScreen} />
-                <Stack.Screen name="ChatScreen" component={ChatScreen} />
-                <Stack.Screen name="ServiceBookings"  component={ServiceBookingsScreen} options={{title: 'Service Bookings', headerStyle: {  backgroundColor: '#1F654C',  }, headerTintColor: '#fff' }}/>
+                <Stack.Screen 
+                    name="ChatScreen" 
+                    component={ChatScreen} 
+                    options={{ title: 'Chat' }}
+                />
+                <Stack.Screen 
+                    name="ServiceBookings"  
+                    component={ServiceBookingsScreen} 
+                    options={{
+                        title: 'Service Bookings',
+                        headerStyle: { backgroundColor: '#1F654C' },
+                        headerTintColor: '#fff'
+                    }}
+                />               
                 <Stack.Screen name="Categories" component={CategoryScreen} />
                 <Stack.Screen name="CategoryDetailScreen" component={CategoryDetailScreen} />
                 <Stack.Screen name="SubcategoryScreen" component={SubcategoryScreen} />

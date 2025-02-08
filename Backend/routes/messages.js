@@ -35,24 +35,33 @@ const authenticateToken = (req, res, next) => {
         next();
     });
 };
+// Update message send endpoint
 router.post('/send', authenticateToken, async (req, res) => {
     try {
         const { booking_id, sender_id, receiver_id, text } = req.body;
 
-        // First get chat room ID for this booking
+        // Validate required fields
+        if (!booking_id || !sender_id || !receiver_id || !text) {
+            console.error('Missing required fields:', { booking_id, sender_id, receiver_id, text });
+            return res.status(400).json({ 
+                error: 'Missing required fields',
+                details: { booking_id, sender_id, receiver_id, text }
+            });
+        }
+
+        // First get chat room ID
         const chatRoomResult = await pool.query(
             'SELECT id FROM chat_rooms WHERE booking_id = $1',
             [booking_id]
         );
 
-        // If chat room doesn't exist, return error
         if (chatRoomResult.rows.length === 0) {
-            return res.status(400).json({ message: 'No chat room found for this booking' });
+            return res.status(400).json({ error: 'No chat room found for this booking' });
         }
 
         const chat_room_id = chatRoomResult.rows[0].id;
 
-        // Insert message with chat_room_id
+        // Insert message with all required fields
         const newMessage = await pool.query(
             `INSERT INTO messages 
             (booking_id, sender_id, receiver_id, text, created_at, chat_room_id) 
@@ -61,11 +70,11 @@ router.post('/send', authenticateToken, async (req, res) => {
             [booking_id, sender_id, receiver_id, text, chat_room_id]
         );
         
-        console.log('Inserted message with chat_room_id:', newMessage.rows[0]);
+        console.log('Message created:', newMessage.rows[0]);
         return res.json(newMessage.rows[0]);
     } catch (error) {
         console.error('Error sending message:', error);
-        return res.status(500).json({ message: 'Server error' });
+        return res.status(500).json({ error: 'Failed to send message', details: error.message });
     }
 });
 // Mark messages as read

@@ -107,6 +107,232 @@ const LoadingOverlay = () => (
     </View>
 );
 
+  // Add this new section in ProfileScreen
+  const UserBookings = ({ navigation, authToken }) => {
+    const [userBookings, setUserBookings] = useState([]);
+    const [loadingBookings, setLoadingBookings] = useState(true);
+
+
+    useEffect(() => {
+        fetchUserBookings();
+    }, []);
+    const fetchUserBookings = async () => {
+        try {
+            const response = await fetch('http://192.168.1.2:5000/api/bookings/user/bookings', {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch bookings');
+            }
+
+            const data = await response.json();
+            setUserBookings(data);
+        } catch (error) {
+            console.error('Error fetching bookings:', error);
+            Alert.alert('Error', 'Failed to load your bookings');
+        } finally {
+            setLoadingBookings(false);
+        }
+    };
+    const getStatusColor = (status) => {
+        switch (status.toLowerCase()) {
+            case 'pending':
+                return '#FFA500'; // Orange
+            case 'confirmed':
+                return '#4CAF50'; // Green
+            case 'completed':
+                return '#2196F3'; // Blue
+            case 'cancelled':
+                return '#FF4444'; // Red
+            default:
+                return '#999';
+        }
+    };
+    const renderBookingItem = ({ item }) => {
+        const handleStatusChange = async () => {
+            try {
+                const newStatus = item.status === 'pending' ? 'confirmed' : 'pending';
+                console.log('Changing status to:', newStatus); // Debug log
+                
+                const response = await fetch(
+                    `http://192.168.1.2:5000/api/bookings/${item.id}/status`,
+                    {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ status: newStatus })
+                    }
+                );
+    
+                if (!response.ok) {
+                    throw new Error('Failed to update status');
+                }
+    
+                // Refresh bookings list
+                fetchUserBookings();
+            } catch (error) {
+                console.error('Error updating status:', error);
+                Alert.alert('Error', 'Failed to update booking status');
+            }
+        };
+        return (
+            <View style={styles.bookingCard}>
+                <View style={styles.bookingHeader}>
+                <Image 
+                    source={{ uri: item.customer_image || 'https://via.placeholder.com/50' }}
+                    style={styles.customerImage}
+                />
+                <View style={styles.bookingInfo}>
+                    <Text style={styles.customerName}>{item.customer_name}</Text>
+                    <Text style={styles.bookingDate}>
+                        {new Date(item.booking_date).toLocaleDateString()} at {item.booking_time}
+                    </Text>
+                    
+                    <TouchableOpacity
+                        onPress={handleStatusChange}
+                        activeOpacity={0.7}
+                        style={[
+                            styles.statusBadge,
+                            { backgroundColor: getStatusColor(item.status) }
+                        ]}
+                    >
+                        <Text style={styles.statusText}>
+                            {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+                </View>
+                
+                <TouchableOpacity 
+                    style={styles.chatButton}
+                    onPress={() => navigation.navigate('ChatScreen', {
+                        bookingId: item.id,
+                        customerName: item.customer_name
+                    })}
+                >
+                    <Icon name="chatbubble-outline" size={20} color="#FFF" />
+                    <Text style={styles.chatButtonText}>Chat with Customer</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    };
+    if (loadingBookings) {
+        return <ActivityIndicator size="large" color={COLORS.primary} />;
+    }
+
+    return (
+        <View style={styles.bookingsSection}>
+            <Text style={styles.sectionTitle}>My Bookings</Text>
+            <FlatList
+                data={userBookings}
+                renderItem={renderBookingItem}
+                keyExtractor={item => item.id.toString()}
+                ListEmptyComponent={
+                    <Text style={styles.emptyBookingsText}>
+                        You haven't made any bookings yet
+                    </Text>
+                }
+            />
+        </View>
+    );
+};
+
+const ServiceItem = ({ item, navigation, authToken, handleEditService, handleDeleteService }) => {
+    const [bookingCount, setBookingCount] = useState(0);
+
+    const fetchBookingCount = async () => {
+        try {
+            console.log('Fetching count for service:', item.id);
+            const response = await fetch(
+                `http://192.168.1.2:5000/api/bookings/service/${item.id}/count`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+    
+            // Handle 404 gracefully
+            if (response.status === 404) {
+                console.log('No bookings found for service:', item.id);
+                setBookingCount(0);
+                return;
+            }
+    
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+    
+            const data = await response.json();
+            setBookingCount(data.count || 0);
+        } catch (error) {
+            console.error('Error fetching booking count:', error);
+            setBookingCount(0);
+        }
+    };
+
+    useEffect(() => {
+        fetchBookingCount();
+    }, [item.id]);
+    return (
+        <TouchableOpacity 
+            style={styles.serviceItem}
+            onPress={() => navigation.navigate('ServiceBookings', { service: item })}
+        >
+            <Image 
+                source={{ uri: item.image || 'https://via.placeholder.com/150' }} 
+                style={styles.serviceImage} 
+            />
+            <View style={styles.serviceDetails}>
+                <Text style={styles.serviceName}>{item.name}</Text>
+                <Text style={styles.servicePrice}>${item.price}</Text>
+                {bookingCount > 0 && (
+                    <View style={styles.bookingBadge}>
+                        <Text style={styles.bookingBadgeText}>
+                            {bookingCount} booking{bookingCount !== 1 ? 's' : ''}
+                        </Text>
+                    </View>
+                )}
+                <View style={styles.serviceActions}>
+                    <TouchableOpacity 
+                        style={styles.editButton}
+                        onPress={() => handleEditService(item)}
+                    >
+                        <Icon name="pencil" size={18} color="#1F654C" />
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={styles.deleteButton}
+                        onPress={() => {
+                            Alert.alert(
+                                'Confirm Deletion',
+                                'Are you sure you want to delete this service?',
+                                [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    { 
+                                        text: 'Delete', 
+                                        style: 'destructive',
+                                        onPress: () => handleDeleteService(item.id)
+                                    },
+                                ],
+                            );
+                        }}
+                    >
+                        <Icon name="trash" size={18} color="#FF6B6B" />
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </TouchableOpacity>
+    );
+};
 
 const ProfileScreen = ({ navigation }) => {
     const { user, setUser, becomeDeliverer, authToken } = useAuth();
@@ -191,6 +417,8 @@ const ProfileScreen = ({ navigation }) => {
       },
     ],
   };
+
+
     const fetchProfileData = async () => {
         if (!user?.id) {
             console.error('No user ID available');
@@ -639,46 +867,13 @@ const ProfileScreen = ({ navigation }) => {
     };
 
     const renderServiceItem = ({ item }) => (
-        <TouchableOpacity 
-        style={styles.serviceItem}
-        onPress={() => navigation.navigate('ServiceBookings', { service: item })}
-    >
-            <Image 
-                source={{ uri: item.image || 'https://via.placeholder.com/150' }} 
-                style={styles.serviceImage} 
-            />
-            <View style={styles.serviceDetails}>
-                <Text style={styles.serviceName}>{item.name}</Text>
-                <Text style={styles.servicePrice}>${item.price}</Text>
-                <View style={styles.serviceActions}>
-                    <TouchableOpacity 
-                        style={styles.editButton}
-                        onPress={() => handleEditService(item)}
-                    >
-                        <Icon name="pencil" size={18} color="#1F654C" />
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                        style={styles.deleteButton}
-                        onPress={() => {
-                            Alert.alert(
-                                'Confirm Deletion',
-                                'Are you sure you want to delete this service?',
-                                [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    { 
-                                        text: 'Delete', 
-                                        style: 'destructive',
-                                        onPress: () => handleDeleteService(item.id), 
-                                    },
-                                ],
-                            );
-                        }}
-                    >
-                        <Icon name="trash" size={18} color="#FF6B6B" />
-                    </TouchableOpacity>
-                </View>
-            </View>
-            </TouchableOpacity>
+        <ServiceItem 
+            item={item}
+            navigation={navigation}
+            authToken={authToken}
+            handleEditService={handleEditService}
+            handleDeleteService={handleDeleteService}
+        />
     );
     
     const renderServicesSection = () => {
@@ -916,11 +1111,21 @@ const ProfileScreen = ({ navigation }) => {
             <FlatList
                 data={isServiceProvider ? userServices : []}
                 renderItem={isServiceProvider ? renderServiceItem : null}
+                ListHeaderComponent={
+                    <>
+                        {listHeaderComponent}
+                        {!isServiceProvider && (
+                            <UserBookings 
+                                navigation={navigation} 
+                                authToken={authToken}
+                            />
+                        )}
+                    </>
+                }
                 keyExtractor={(item) => item.id.toString()}
-                ListHeaderComponent={listHeaderComponent}
                 contentContainerStyle={styles.contentContainer}
-                ListEmptyComponent={isServiceProvider ? renderEmptyServices : null}            />
-
+                ListEmptyComponent={isServiceProvider ? renderEmptyServices : null}
+            />
             {/* Role Request Modals */}
             <RoleRequestModal
                 visible={activeModal === 'DRIVER'}
@@ -1319,6 +1524,71 @@ const styles = StyleSheet.create({
     },
     darkModeRoleButtonText: {
         color: COLORS.darkPrimary,
+    },
+    bookingsSection: {
+        padding: 15,
+        backgroundColor: COLORS.background,
+    },
+    bookingItem: {
+        backgroundColor: COLORS.white,
+        borderRadius: 10,
+        padding: 15,
+        marginBottom: 15,
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    bookingHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    bookingInfo: {
+        flex: 1,
+    },
+    bookingDate: {
+        fontSize: 14,
+        color: '#666',
+        marginTop: 4,
+    },
+    emptyBookingsText: {
+        textAlign: 'center',
+        color: '#666',
+        marginTop: 20,
+    },
+    bookingBadge: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        backgroundColor: '#1F654C',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    bookingBadgeText: {
+        color: '#FFF',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    serviceImage: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        marginRight: 15,
+    },
+    statusBadge: {
+        marginTop: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 12,
+        alignSelf: 'flex-start',
+        elevation: 2, // Add elevation for better touch feedback
+    },
+    statusText: {
+        color: COLORS.white,
+        fontSize: 12,
+        fontWeight: '600',
     },
 });
 export default ProfileScreen;

@@ -19,7 +19,20 @@ const ServiceBookingsScreen = ({ route, navigation }) => {
     const [loading, setLoading] = useState(true);
     const { authToken } = useAuth();
     const [refreshing, setRefreshing] = useState(false);
-
+    const getStatusColor = (status) => {
+        switch (status.toLowerCase()) {
+            case 'pending':
+                return '#FFA500'; // Orange
+            case 'confirmed':
+                return '#4CAF50'; // Green
+            case 'completed':
+                return '#2196F3'; // Blue
+            case 'cancelled':
+                return '#FF4444'; // Red
+            default:
+                return '#999';
+        }
+    };
     useEffect(() => {
         if (!service?.id) {
             Alert.alert('Error', 'Invalid service information');
@@ -66,7 +79,38 @@ const ServiceBookingsScreen = ({ route, navigation }) => {
             setLoading(false);
         }
     };
+    const updateBookingStatus = async (bookingId, newStatus) => {
+        try {
+            const response = await fetch(
+                `http://192.168.1.2:5000/api/bookings/${bookingId}/status`,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                }
+            );
 
+            if (!response.ok) {
+                throw new Error('Failed to update status');
+            }
+
+            // Update local state
+            setBookings(prevBookings => 
+                prevBookings.map(booking => 
+                    booking.id === bookingId 
+                        ? { ...booking, status: newStatus }
+                        : booking
+                )
+            );
+        } catch (error) {
+            console.error('Error updating status:', error);
+            Alert.alert('Error', 'Failed to update booking status');
+        }
+    };
+   
     const renderBookingItem = ({ item }) => (
         <View style={styles.bookingCard}>
             <View style={styles.bookingHeader}>
@@ -76,34 +120,57 @@ const ServiceBookingsScreen = ({ route, navigation }) => {
                 />
                 <View style={styles.bookingInfo}>
                     <Text style={styles.customerName}>{item.customer_name}</Text>
-                    <Text style={styles.bookingDate}>
-                        {new Date(item.booking_date).toLocaleDateString()} at {item.booking_time}
-                    </Text>
-                </View>
-                <View style={styles.statusContainer}>
-                    <Text style={[
-                        styles.statusText,
-                        { color: item.status === 'pending' ? '#FFA500' : '#4CAF50' }
-                    ]}>
-                        {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-                    </Text>
+                    <View style={styles.dateTimeContainer}>
+                        <Icon name="calendar-outline" size={16} color="#666" />
+                        <Text style={styles.bookingDate}>
+                            {new Date(item.booking_date).toLocaleDateString()}
+                        </Text>
+                        <Icon name="time-outline" size={16} color="#666" />
+                        <Text style={styles.bookingTime}>
+                            {item.booking_time}
+                        </Text>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+                        <Text style={styles.statusText}>
+                            {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                        </Text>
+                    </View>
                 </View>
             </View>
-            
-            <View style={styles.actionButtons}>
-                <TouchableOpacity 
-                    style={styles.chatButton}
-                    onPress={() => navigation.navigate('Chat', { 
-                        bookingId: item.id,
-                        customerName: item.customer_name
-                    })}
+    
+    
+            <View style={styles.statusOptionsContainer}>
+            {['pending', 'confirmed', 'completed', 'cancelled'].map((status) => (
+                <TouchableOpacity
+                    key={status}
+                    style={[
+                        styles.statusOption,
+                        item.status === status && styles.selectedStatus,
+                        { backgroundColor: getStatusColor(status) }
+                    ]}
+                    onPress={() => updateBookingStatus(item.id, status)}
                 >
-                    <Icon name="chatbubble-outline" size={20} color="#FFF" />
-                    <Text style={styles.buttonText}>Chat with Customer</Text>
+                    <Text style={styles.statusOptionText}>
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </Text>
                 </TouchableOpacity>
-            </View>
+            ))}
         </View>
-    );
+
+        <View style={styles.divider} />
+
+        <TouchableOpacity 
+            style={styles.chatButton}
+            onPress={() => navigation.navigate('ChatScreen', {
+                bookingId: item.id,
+                customerName: item.customer_name
+            })}
+        >
+            <Icon name="chatbubble-outline" size={20} color="#1F654C" />
+            <Text style={styles.chatButtonText}>Message Customer</Text>
+        </TouchableOpacity>
+    </View>
+);
 
     if (loading) {
         return (
@@ -174,11 +241,36 @@ const styles = StyleSheet.create({
     bookingsList: {
         padding: 15
     },
+    statusOptionsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 15,
+        paddingTop: 15,
+        borderTopWidth: 1,
+        borderTopColor: '#E0E0E0'
+    },
+    statusOption: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        minWidth: 80,
+        alignItems: 'center'
+    },
+    selectedStatus: {
+        borderWidth: 2,
+        borderColor: '#FFF'
+    },
+    statusOptionText: {
+        color: '#FFF',
+        fontSize: 12,
+        fontWeight: '600'
+    },
     bookingCard: {
-        backgroundColor: '#FFF',
-        borderRadius: 12,
-        padding: 15,
-        marginBottom: 15,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 15,
+        padding: 16,
+        marginHorizontal: 16,
+        marginBottom: 16,
         elevation: 3,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -187,36 +279,69 @@ const styles = StyleSheet.create({
     },
     bookingHeader: {
         flexDirection: 'row',
-        alignItems: 'center'
+        alignItems: 'flex-start'
     },
     customerImage: {
-        width: 50,
-        height: 50,
-        borderRadius: 25
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        marginRight: 12
     },
     bookingInfo: {
-        flex: 1,
-        marginLeft: 15
+        flex: 1
     },
     customerName: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#333'
+        color: '#2C3E50',
+        marginBottom: 6
+    },
+    dateTimeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8
     },
     bookingDate: {
         fontSize: 14,
         color: '#666',
-        marginTop: 4
+        marginLeft: 4,
+        marginRight: 12
     },
-    statusContainer: {
+    bookingTime: {
+        fontSize: 14,
+        color: '#666',
+        marginLeft: 4
+    },
+    statusBadge: {
+        alignSelf: 'flex-start',
         paddingHorizontal: 12,
         paddingVertical: 6,
-        borderRadius: 20,
-        backgroundColor: '#F0F0F0'
+        borderRadius: 20
     },
     statusText: {
-        fontSize: 14,
+        color: '#FFF',
+        fontSize: 12,
         fontWeight: '600'
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#E0E0E0',
+        marginVertical: 12
+    },
+    chatButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#E6F2EF',
+        padding: 12,
+        borderRadius: 8,
+        marginTop: 4
+    },
+    chatButtonText: {
+        color: '#FFFFFF',
+        marginLeft: 8,
+        fontSize: 16,
+        fontWeight: '500'
     },
     actionButtons: {
         flexDirection: 'row',

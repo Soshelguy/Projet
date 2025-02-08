@@ -117,7 +117,62 @@ router.post('/create', authenticateToken, async (req, res) => {
       res.status(500).json({ error: 'Failed to create booking' });
     }
   });
-  
+  router.get('/:bookingId', authenticateToken, async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+        const result = await pool.query(
+            `SELECT 
+                b.*,
+                s.name as service_name,
+                s.user_id as provider_id,
+                u.full_name as customer_name,
+                u.id as customer_id
+            FROM bookings b
+            JOIN services s ON b.service_id = s.id
+            JOIN users u ON b.customer_id = u.id
+            WHERE b.id = $1`,
+            [bookingId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Booking not found' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Error fetching booking:', error);
+        res.status(500).json({ error: 'Failed to fetch booking' });
+    }
+});
+  //Endpoint for booking count
+router.get('/service/:serviceId/count', authenticateToken, async (req, res) => {
+  try {
+      const { serviceId } = req.params;
+      
+      // First verify service exists
+      const serviceCheck = await pool.query(
+          'SELECT id FROM services WHERE id = $1',
+          [serviceId]
+      );
+
+      if (serviceCheck.rows.length === 0) {
+          return res.status(404).json({ error: 'Service not found' });
+      }
+
+      const result = await pool.query(
+          `SELECT COUNT(*) as count
+           FROM bookings
+           WHERE service_id = $1 
+           AND status = 'pending'`,
+          [serviceId]
+      );
+
+      res.json({ count: parseInt(result.rows[0].count) });
+  } catch (error) {
+      console.error('Error getting booking count:', error);
+      res.status(500).json({ error: 'Failed to get booking count' });
+  }
+});
 
   // Update the unavailable slots endpoint to handle errors better
 router.get('/unavailable-slots/:serviceId', async (req, res) => {
@@ -151,34 +206,56 @@ router.get('/unavailable-slots/:serviceId', async (req, res) => {
  * @param {number} req.params.id - The ID of the booking.
  * @property {string} req.body.status - The new status of the booking.
  */
-router.put('/:id/status', async (req, res) => {
-    try {
+// Update the status update endpoint to include authentication
+router.put('/:id/status', authenticateToken, async (req, res) => {
+  try {
+      const { id } = req.params;
       const { status } = req.body;
-      const bookingResult = await pool.query(
-        'UPDATE bookings SET status = $1 WHERE id = $2 RETURNING *',
-        [status, req.params.id]
+
+      const result = await pool.query(
+          `UPDATE bookings 
+           SET status = $1 
+           WHERE id = $2 
+           RETURNING *`,
+          [status, id]
       );
+
+      if (result.rows.length === 0) {
+          return res.status(404).json({ error: 'Booking not found' });
+      }
+
+      res.json(result.rows[0]);
+  } catch (error) {
+      console.error('Error updating booking status:', error);
+      res.status(500).json({ error: 'Failed to update booking status' });
+  }
+});
   
-      const updatedBooking = bookingResult.rows[0];
-      // Notify the customer that their booking has changed status
-      await pool.query(
-        'INSERT INTO notifications (user_id, title, message, type) VALUES ($1, $2, $3, $4)',
-        [
-          updatedBooking.customer_id,
-          'Booking Update',
-          `Your booking has been ${status}`,
-          'booking_update'
-        ]
-      );
+  router.get('/user/bookings', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        
+        const bookings = await pool.query(
+            `SELECT 
+                b.*,
+                s.name as service_name,
+                s.image as service_image,
+                u.name as provider_name
+            FROM bookings b
+            JOIN services s ON b.service_id = s.id
+            JOIN users u ON b.provider_id = u.id
+            WHERE b.customer_id = $1
+            ORDER BY b.booking_date DESC, b.booking_time DESC`,
+            [userId]
+        );
   
-      res.json(updatedBooking);
+        res.json(bookings.rows);
     } catch (error) {
-      console.error('Error updating booking:', error);
-      res.status(500).json({ message: 'Server error' });
+        console.error('Error fetching user bookings:', error);
+        res.status(500).json({ error: 'Failed to fetch bookings' });
     }
   });
   
-
 /**
  * Get all bookings for a given user.
  * @param {number} req.params.id - The ID of the user.
@@ -238,4 +315,5 @@ router.get('/user/:id', async (req, res) => {
         });
     }
 });
+
   module.exports = router;
