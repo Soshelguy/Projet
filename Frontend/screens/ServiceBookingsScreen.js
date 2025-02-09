@@ -168,6 +168,13 @@ const ServiceBookingsScreen = ({ route, navigation }) => {
         >
             <Icon name="chatbubble-outline" size={20} color="#1F654C" />
             <Text style={styles.chatButtonText}>Message Customer</Text>
+            {item.unread_messages > 0 && (
+                <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadBadgeText}>
+                        {item.unread_messages}
+                    </Text>
+                </View>
+            )}
         </TouchableOpacity>
     </View>
 );
@@ -240,6 +247,23 @@ const styles = StyleSheet.create({
     },
     bookingsList: {
         padding: 15
+    },
+    unreadBadge: {
+        position: 'absolute',
+        top: -8,
+        right: -8,
+        backgroundColor: '#FF4444',
+        borderRadius: 12,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 6,
+    },
+    unreadBadgeText: {
+        color: '#FFF',
+        fontSize: 12,
+        fontWeight: 'bold',
     },
     statusOptionsContainer: {
         flexDirection: 'row',

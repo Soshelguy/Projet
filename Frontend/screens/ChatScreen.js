@@ -32,11 +32,11 @@ const ChatScreen = ({ route, navigation }) => {
     }, [user]);
 
     useEffect(() => {
-        if (user) {
+        if (user && booking) {
             setCurrentUserId(user.id);
-            setIsProvider(user.id === providerId);
+            setIsProvider(user.id === booking.provider_id);
         }
-    }, [user, providerId]);
+    }, [user, booking]);
 
     useEffect(() => {
         const fetchBookingDetails = async () => {
@@ -81,66 +81,122 @@ const ChatScreen = ({ route, navigation }) => {
             fetchMessages();
         }
     }, [currentUserId]);
-
-    // Update socket effect
-useEffect(() => {
+// socket effect
+    useEffect(() => {
+       // Initialize socket
     socket.current = io('http://192.168.1.2:5000');
     
+    // Join chat room
     socket.current.emit('joinRoom', { roomId: bookingId });
     
-    // Listen for new messages
+        // Listen for new messages
     socket.current.on('receiveMessage', (newMessage) => {
-        console.log('Received new message:', newMessage);
-        setMessages(prevMessages => [...prevMessages, newMessage]);
-        // Scroll to bottom when new message arrives
+        console.log('Received new message via socket:', newMessage);
+        setMessages(prevMessages => {
+            const messageExists = prevMessages.some(msg => msg.id === newMessage.id);
+            if (!messageExists) {
+                // Mark message as read if receiver is current user
+                if (newMessage.receiver_id === currentUserId) {
+                    markMessagesAsRead();
+                }
+                return [...prevMessages, newMessage];
+            }
+            return prevMessages;
+        });
         flatListRef.current?.scrollToEnd();
     });
     
-    // Clean up socket connection and listeners
+         // Listen for read status updates
+    socket.current.on('messagesRead', ({ reader_id }) => {
+        console.log('Messages marked as read by:', reader_id);
+        setMessages(prevMessages => 
+            prevMessages.map(msg => 
+                msg.receiver_id === reader_id ? { ...msg, read: true } : msg
+            )
+        );
+    });
+        
     return () => {
         if (socket.current) {
-            socket.current.off('receiveMessage');
             socket.current.disconnect();
         }
     };
-}, [bookingId]);
+}, [bookingId, currentUserId]);
 
-    // Update the fetchMessages function logging
+// Move markMessagesAsRead outside useEffect
+const markMessagesAsRead = async () => {
+    try {
+        const response = await fetch('http://192.168.1.2:5000/api/messages/read', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({
+                booking_id: bookingId,
+                user_id: currentUserId
+            })
+        });
+
+        if (response.ok) {
+            // Emit socket event for real-time update
+            socket.current.emit('markAsRead', {
+                roomId: bookingId,
+                booking_id: bookingId,
+                user_id: currentUserId
+            });
+        }
+    } catch (error) {
+        console.error('Error marking messages as read:', error);
+    }
+};
+
+// read status check on messages update
+useEffect(() => {
+    if (messages.length > 0 && currentUserId) {
+        const hasUnreadMessages = messages.some(
+            msg => msg.receiver_id === currentUserId && !msg.read
+        );
+        if (hasUnreadMessages) {
+            markMessagesAsRead();
+        }
+    }
+}, [messages, currentUserId]);
+
+    // fetchMessages function logging
     const fetchMessages = async () => {
         try {
-            console.log('Frontend: Fetching messages for booking', bookingId);
+            console.log('Fetching messages for booking:', bookingId);
             
             if (!bookingId) {
-                console.error('Frontend: No booking ID provided');
+                console.error('No booking ID provided');
                 return;
             }
     
-            const url = `http://192.168.1.2:5000/api/messages/booking/${bookingId}`;
-            console.log('Frontend: Fetching from URL:', url);
-    
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${authToken}`,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
+            const response = await fetch(
+                `http://192.168.1.2:5000/api/messages/booking/${bookingId}`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 }
-            });
-    
-            console.log('Frontend: Response status:', response.status);
+            );
     
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Frontend: Error response:', errorText);
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
     
             const data = await response.json();
-            console.log('Frontend: Received messages:', data.length);
-            setMessages(data);
+            console.log('Received messages data:', data);
+            
+            if (data && data.messages) {
+                setMessages(data.messages);
+            }
     
         } catch (error) {
-            console.error('Frontend: Ftch error:', error);
+            console.error('Error fetching messages:', error);
             setMessages([]);
         }
     };
@@ -150,26 +206,36 @@ useEffect(() => {
     if (!newMessage.trim()) return;
 
     try {
-        // Ensure booking is loaded
-        if (!booking) {
-            console.error('No booking data available');
-            return;
+        const messageContent = newMessage.trim();
+        let receiverId;
+        
+        if (isProvider) {
+            // Provider sending to customer
+            receiverId = booking.customer_id;
+        } else {
+            // Customer sending to provider
+            receiverId = booking.provider_id;
         }
 
-        // Determine receiver_id based on role
-        const receiverId = isProvider ? booking.customer_id : booking.provider_id;
-
-        // Log for debugging
-        console.log('Sending message with:', {
-            booking_id: bookingId,
-            sender_id: currentUserId,
-            receiver_id: receiverId,
-            text: newMessage.trim()
+        console.log('Message details:', {
+            isProvider,
+            currentUserId: user?.id,
+            providerId: booking?.provider_id,
+            customerId: booking?.customer_id,
+            receiverId
         });
 
         if (!receiverId) {
-            throw new Error('Could not determine message recipient');
+            console.error('Cannot determine receiver. Booking:', booking);
+            return;
         }
+
+        const messageData = {
+            booking_id: bookingId,
+            sender_id: currentUserId,
+            receiver_id: receiverId,
+            text: messageContent
+        };
 
         const response = await fetch('http://192.168.1.2:5000/api/messages/send', {
             method: 'POST',
@@ -177,46 +243,58 @@ useEffect(() => {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`
             },
-            body: JSON.stringify({
-                booking_id: bookingId,
-                sender_id: currentUserId,
-                receiver_id: receiverId,
-                text: newMessage.trim()
-            })
+            body: JSON.stringify(messageData)
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to send message');
+            throw new Error('Failed to send message');
         }
 
-        const sentMessage = await response.json();
+        const savedMessage = await response.json();
+        console.log('Message saved:', savedMessage);
+
+        // Emit after successful save
+        socket.current.emit('sendMessage', {
+            roomId: bookingId,
+            message: savedMessage
+        });
+
         setNewMessage('');
-        setMessages(prevMessages => [...prevMessages, sentMessage]);
 
     } catch (error) {
         console.error('Error sending message:', error);
         Alert.alert('Error', 'Failed to send message');
     }
 };
-
     //  renderMessage function
-
-const renderMessage = ({ item }) => {
-    const isCurrentUser = item.sender_id === currentUserId;
-    return (
-        <View style={[
-            styles.messageContainer,
-            isCurrentUser ? styles.currentUserMessage : styles.otherUserMessage
-        ]}>
-            <Text style={styles.messageSender}>{item.sender_name}</Text>
-            <Text style={styles.messageText}>{item.text}</Text>
-            <Text style={styles.messageTime}>
-                {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </Text>
-        </View>
-    );
-};
+    const renderMessage = ({ item }) => {
+        const isCurrentUser = item.sender_id === currentUserId;
+        return (
+            <View style={[
+                styles.messageContainer,
+                isCurrentUser ? styles.currentUserMessage : styles.otherUserMessage
+            ]}>
+                <Text style={styles.messageSender}>{item.sender_name}</Text>
+                <Text style={styles.messageText}>{item.text}</Text>
+                <View style={styles.messageFooter}>
+                    <Text style={styles.messageTime}>
+                        {new Date(item.created_at).toLocaleTimeString([], { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        })}
+                    </Text>
+                    {isCurrentUser && (
+                        <Icon 
+                            name={item.read ? "checkmark-done" : "checkmark"} 
+                            size={16} 
+                            color={item.read ? "#4CAF50" : "#999"}
+                            style={styles.readIndicator}
+                        />
+                    )}
+                </View>
+            </View>
+        );
+    };
 
     return (
         <KeyboardAvoidingView
@@ -329,6 +407,15 @@ const styles = {
         borderTopColor: '#eee',
         backgroundColor: '#fff',
         alignItems: 'center'
+    },
+    messageFooter: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        marginTop: 4
+    },
+    readIndicator: {
+        marginLeft: 4
     },
     input: {
         flex: 1,

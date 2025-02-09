@@ -149,7 +149,6 @@ router.get('/service/:serviceId/count', authenticateToken, async (req, res) => {
   try {
       const { serviceId } = req.params;
       
-      // First verify service exists
       const serviceCheck = await pool.query(
           'SELECT id FROM services WHERE id = $1',
           [serviceId]
@@ -163,7 +162,7 @@ router.get('/service/:serviceId/count', authenticateToken, async (req, res) => {
           `SELECT COUNT(*) as count
            FROM bookings
            WHERE service_id = $1 
-           AND status = 'pending'`,
+           AND status IN ('pending', 'confirmed')`,
           [serviceId]
       );
 
@@ -283,37 +282,37 @@ router.get('/user/:id', async (req, res) => {
       res.status(500).json({ message: 'Server error' });
     }
   });
-   // Add service bookings endpoint
-   router.get('/service/:serviceId', authenticateToken, async (req, res) => {
-    try {
-        console.log('ServiceID:', req.params.serviceId);
-        console.log('UserID:', req.user.userId);
+   // service bookings endpoint
+router.get('/service/:serviceId', authenticateToken, async (req, res) => {
+  try {
+      const bookings = await pool.query(
+          `SELECT 
+              b.id,
+              b.booking_date,
+              b.booking_time,
+              b.status,
+              b.customer_id,
+              u.full_name as customer_name,
+              COALESCE(u.profile_image_url, 'https://via.placeholder.com/50') as customer_image,
+              (
+                  SELECT COUNT(*)
+                  FROM messages m
+                  WHERE m.booking_id = b.id
+                  AND m.receiver_id = $2
+                  AND m.read = false
+              ) as unread_messages
+           FROM bookings b
+           JOIN users u ON b.customer_id = u.id
+           WHERE b.service_id = $1
+           ORDER BY b.booking_date DESC, b.booking_time DESC`,
+          [req.params.serviceId, req.user.userId]
+      );
 
-        const bookings = await pool.query(
-            `SELECT 
-                b.id,
-                b.booking_date,
-                b.booking_time,
-                b.status,
-                b.customer_id,
-                u.full_name as customer_name,
-                COALESCE(u.profile_image_url, 'https://via.placeholder.com/50') as customer_image
-             FROM bookings b
-             JOIN users u ON b.customer_id = u.id
-             WHERE b.service_id = $1
-             ORDER BY b.booking_date DESC, b.booking_time DESC`,
-            [req.params.serviceId]
-        );
-
-        console.log('Bookings found:', bookings.rows.length);
-        res.json(bookings.rows);
-    } catch (error) {
-        console.error('Database error:', error);
-        res.status(500).json({ 
-            error: 'Failed to fetch bookings',
-            details: error.message 
-        });
-    }
+      res.json(bookings.rows);
+  } catch (error) {
+      console.error('Database error:', error);
+      res.status(500).json({ error: 'Failed to fetch bookings' });
+  }
 });
 
   module.exports = router;

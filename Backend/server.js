@@ -27,11 +27,15 @@ const app = express();
 const server = http.createServer(app);
 // Initialize socket
 const io = socketServer(server);
+app.set('io', io);
+
 app.use(cors());
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
-
-
+app.use((req, res, next) => {
+    req.io = io;
+    next();
+});
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
@@ -53,10 +57,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api', roleRequestRoutes);
 app.use('/api', usersRoutes);
-
 app.use('/api/messages', messageRoutes);
 app.use('/api/ratings', ratingsRoutes);
-console.log('Routes registered');
 
 app.post('/signup', async (req, res) => {
     const { email, password, name = '', address = '', phone_number = '' } = req.body;

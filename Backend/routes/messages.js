@@ -81,48 +81,75 @@ router.post('/send', authenticateToken, async (req, res) => {
 router.put('/read', authenticateToken, async (req, res) => {
     try {
         const { booking_id, user_id } = req.body;
-
-        // Log the received data
-        console.log('Received data for marking messages as read:', { booking_id, user_id });
-
-        // Validate required fields
-        if (!booking_id || !user_id) {
-            return res.status(400).json({ error: 'Missing required fields (booking_id, user_id).' });
-        }
+        console.log('Marking messages as read:', { booking_id, user_id });
 
         const result = await pool.query(
-            'UPDATE messages SET read = true WHERE booking_id = $1 AND receiver_id = $2',
+            `UPDATE messages 
+             SET read = true 
+             WHERE booking_id = $1 
+             AND receiver_id = $2 
+             AND read = false
+             RETURNING id`,
             [booking_id, user_id]
         );
 
-        return res.json({ message: 'Messages marked as read' });
+        // Get io instance from request
+        const io = req.io;
+        
+        if (io && result.rows.length > 0) {
+            const roomId = `booking_${booking_id}`;
+            console.log('Emitting to room:', roomId);
+            io.to(roomId).emit('messagesRead', {
+                booking_id,
+                reader_id: user_id
+            });
+        } else {
+            console.log('No messages marked as read or io not available');
+        }
+
+        return res.json({ 
+            message: 'Messages marked as read',
+            updated: result.rows.length
+        });
     } catch (error) {
         console.error('Error marking messages as read:', error);
-        return res.status(500).json({ message: 'Server error' });
+        return res.status(500).json({ error: 'Server error' });
     }
 });
 
-
-// Update booking messages route
 router.get('/booking/:id', authenticateToken, async (req, res) => {
     try {
         const bookingId = req.params.id;
-        console.log('API: Fetching messages for booking:', bookingId);
+        const userId = req.user.userId;
+        console.log('Fetching messages for booking:', bookingId);
 
         const messages = await pool.query(
-            `SELECT m.*, 
-             u1.full_name as sender_name,
-             u2.full_name as receiver_name
+            `SELECT 
+                m.*, 
+                u1.full_name as sender_name,
+                u2.full_name as receiver_name,
+                m.read,
+                (SELECT COUNT(*) 
+                 FROM messages 
+                 WHERE booking_id = $1 
+                 AND receiver_id = $2 
+                 AND read = false) as unread_count
              FROM messages m
              LEFT JOIN users u1 ON m.sender_id = u1.id
              LEFT JOIN users u2 ON m.receiver_id = u2.id
              WHERE m.booking_id = $1 
              ORDER BY m.created_at ASC`,
-            [bookingId]
+            [bookingId, userId]
         );
 
-        console.log(`API: Found ${messages.rows.length} messages`);
-        return res.json(messages.rows);
+        console.log('Found messages:', messages.rows.length);
+
+        const response = {
+            messages: messages.rows,
+            unread_count: parseInt(messages.rows[0]?.unread_count || 0)
+        };
+
+        return res.json(response);
     } catch (error) {
         console.error('API Error:', error);
         return res.status(500).json({ error: 'Failed to fetch messages' });

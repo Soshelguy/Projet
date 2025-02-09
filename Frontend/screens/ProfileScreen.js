@@ -152,76 +152,53 @@ const LoadingOverlay = () => (
                 return '#999';
         }
     };
-    const renderBookingItem = ({ item }) => {
-        const handleStatusChange = async () => {
-            try {
-                const newStatus = item.status === 'pending' ? 'confirmed' : 'pending';
-                console.log('Changing status to:', newStatus); // Debug log
-                
-                const response = await fetch(
-                    `http://192.168.1.2:5000/api/bookings/${item.id}/status`,
-                    {
-                        method: 'PUT',
-                        headers: {
-                            'Authorization': `Bearer ${authToken}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ status: newStatus })
-                    }
-                );
-    
-                if (!response.ok) {
-                    throw new Error('Failed to update status');
-                }
-    
-                // Refresh bookings list
-                fetchUserBookings();
-            } catch (error) {
-                console.error('Error updating status:', error);
-                Alert.alert('Error', 'Failed to update booking status');
-            }
-        };
-        return (
-            <View style={styles.bookingCard}>
-                <View style={styles.bookingHeader}>
+    const renderBookingItem = ({ item }) => (
+        <TouchableOpacity 
+            style={styles.bookingCard}
+            onPress={() => navigation.navigate('ChatScreen', {
+                bookingId: item.id,
+                providerId: item.provider_id,
+                serviceId: item.service_id
+            })}
+        >
+            <View style={styles.bookingHeader}>
                 <Image 
-                    source={{ uri: item.customer_image || 'https://via.placeholder.com/50' }}
-                    style={styles.customerImage}
+                    source={{ uri: item.service_image || 'https://via.placeholder.com/50' }}
+                    style={styles.serviceImage}
                 />
                 <View style={styles.bookingInfo}>
-                    <Text style={styles.customerName}>{item.customer_name}</Text>
-                    <Text style={styles.bookingDate}>
-                        {new Date(item.booking_date).toLocaleDateString()} at {item.booking_time}
-                    </Text>
-                    
-                    <TouchableOpacity
-                        onPress={handleStatusChange}
-                        activeOpacity={0.7}
-                        style={[
-                            styles.statusBadge,
-                            { backgroundColor: getStatusColor(item.status) }
-                        ]}
-                    >
-                        <Text style={styles.statusText}>
-                            {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                    <Text style={styles.serviceName}>{item.service_name}</Text>
+                    <Text style={styles.providerName}>by {item.provider_name}</Text>
+                    <View style={styles.dateTimeContainer}>
+                        <Icon name="calendar-outline" size={14} color="#666" />
+                        <Text style={styles.bookingDate}>
+                            {new Date(item.booking_date).toLocaleDateString()}
                         </Text>
-                    </TouchableOpacity>
+                        <Icon name="time-outline" size={14} color="#666" />
+                        <Text style={styles.bookingTime}>{item.booking_time}</Text>
+                    </View>
                 </View>
-                </View>
-                
-                <TouchableOpacity 
-                    style={styles.chatButton}
-                    onPress={() => navigation.navigate('ChatScreen', {
-                        bookingId: item.id,
-                        customerName: item.customer_name
-                    })}
-                >
-                    <Icon name="chatbubble-outline" size={20} color="#FFF" />
-                    <Text style={styles.chatButtonText}>Chat with Customer</Text>
-                </TouchableOpacity>
             </View>
-        );
-    };
+    
+            <View style={styles.bookingFooter}>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+                    <Text style={styles.statusText}>
+                        {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                    </Text>
+                </View>
+                <View style={styles.chatButton}>
+                    <Icon name="chatbubble-outline" size={18} color="#1F654C" />
+                    {item.unread_messages > 0 && (
+                <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadBadgeText}>
+                        {item.unread_messages}
+                    </Text>
+                </View>
+            )}
+                </View>
+            </View>
+        </TouchableOpacity>
+    );
     if (loadingBookings) {
         return <ActivityIndicator size="large" color={COLORS.primary} />;
     }
@@ -1590,5 +1567,98 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
     },
+    bookingCard: {
+        backgroundColor: '#FFF',
+        borderRadius: 12,
+        padding: 15,
+        marginBottom: 15,
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4
+    },
+    bookingHeader: {
+        flexDirection: 'row',
+        marginBottom: 12
+    },
+    serviceImage: {
+        width: 60,
+        height: 60,
+        borderRadius: 8,
+        marginRight: 12
+    },
+    bookingInfo: {
+        flex: 1,
+        justifyContent: 'center'
+    },
+    serviceName: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#2C3E50',
+        marginBottom: 4
+    },
+    providerName: {
+        fontSize: 14,
+        color: '#666',
+        marginBottom: 6
+    },
+    dateTimeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center'
+    },
+    bookingDate: {
+        fontSize: 14,
+        color: '#666',
+        marginLeft: 4,
+        marginRight: 12
+    },
+    bookingTime: {
+        fontSize: 14,
+        color: '#666',
+        marginLeft: 4
+    },
+    bookingFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#E0E0E0'
+    },
+    unreadBadge: {
+        position: 'absolute',
+        top: -8,
+        right: -8,
+        backgroundColor: '#FF4444',
+        borderRadius: 12,
+        minWidth: 18,
+        height: 18,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    unreadText: {
+        color: '#FFF',
+        fontSize: 11,
+        fontWeight: 'bold'
+    },
+    unreadBadge: {
+        position: 'absolute',
+        top: -8,
+        right: -8,
+        backgroundColor: '#FF4444',
+        borderRadius: 12,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 6,
+    },
+    unreadBadgeText: {
+        color: '#FFF',
+        fontSize: 12,
+        fontWeight: 'bold',
+    }
 });
 export default ProfileScreen;
