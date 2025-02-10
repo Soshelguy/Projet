@@ -83,6 +83,7 @@ router.put('/read', authenticateToken, async (req, res) => {
         const { booking_id, user_id } = req.body;
         console.log('Marking messages as read:', { booking_id, user_id });
 
+        // Update read status
         const result = await pool.query(
             `UPDATE messages 
              SET read = true 
@@ -93,27 +94,24 @@ router.put('/read', authenticateToken, async (req, res) => {
             [booking_id, user_id]
         );
 
-        // Get io instance from request
-        const io = req.io;
-        
-        if (io && result.rows.length > 0) {
-            const roomId = `booking_${booking_id}`;
-            console.log('Emitting to room:', roomId);
-            io.to(roomId).emit('messagesRead', {
+        if (result.rows.length > 0) {
+            // Emit socket event for real-time updates
+            const io = req.app.get('io');
+            io.to(`booking_${booking_id}`).emit('messagesRead', {
                 booking_id,
                 reader_id: user_id
             });
-        } else {
+        }
+        else {
             console.log('No messages marked as read or io not available');
         }
-
-        return res.json({ 
-            message: 'Messages marked as read',
-            updated: result.rows.length
+        res.json({ 
+            success: true,
+            updated: result.rows.length 
         });
     } catch (error) {
         console.error('Error marking messages as read:', error);
-        return res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ error: 'Failed to update read status' });
     }
 });
 

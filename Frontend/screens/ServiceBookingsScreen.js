@@ -110,7 +110,9 @@ const ServiceBookingsScreen = ({ route, navigation }) => {
             Alert.alert('Error', 'Failed to update booking status');
         }
     };
-   
+    const getTotalUnreadMessages = () => {
+        return bookings.reduce((total, booking) => total + (booking.unread_messages || 0), 0);
+    };
     const renderBookingItem = ({ item }) => (
         <View style={styles.bookingCard}>
             <View style={styles.bookingHeader}>
@@ -190,12 +192,21 @@ const ServiceBookingsScreen = ({ route, navigation }) => {
     return (
         <View style={styles.container}>
             <View style={styles.serviceHeader}>
+            <View style={styles.headerContent}>
+
                 <Text style={styles.serviceTitle}>{service.name}</Text>
                 <Text style={styles.bookingsCount}>
                     {bookings.length} booking{bookings.length !== 1 ? 's' : ''}
                 </Text>
             </View>
-            
+            </View>
+            {getTotalUnreadMessages() > 0 && (
+                    <View style={styles.totalUnreadBadge}>
+                        <Text style={styles.totalUnreadText}>
+                            {getTotalUnreadMessages()}
+                        </Text>
+                    </View>
+                )}
             <FlatList
                 atList
                 data={bookings}
@@ -239,6 +250,23 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: 'bold',
         color: '#1F654C'
+    },
+    headerContent: {
+        flex: 1,
+    },
+    totalUnreadBadge: {
+        backgroundColor: '#FF4444',
+        borderRadius: 12,
+        minWidth: 24,
+        height: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+    },
+    totalUnreadText: {
+        color: '#FFF',
+        fontSize: 12,
+        fontWeight: 'bold',
     },
     bookingsCount: {
         fontSize: 16,

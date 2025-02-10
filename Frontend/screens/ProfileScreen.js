@@ -22,6 +22,7 @@ import { useAuth } from '../AuthContext';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { FadeIn, FadeOut,SlideInLeft, SlideOutRight } from 'react-native-reanimated';
 import { AppSettingsContext } from '../AppSettingsContext';
+import io from 'socket.io-client';
 
 const COLORS = {
     primary: '#2C6E63',      // Deep teal
@@ -111,8 +112,24 @@ const LoadingOverlay = () => (
   const UserBookings = ({ navigation, authToken }) => {
     const [userBookings, setUserBookings] = useState([]);
     const [loadingBookings, setLoadingBookings] = useState(true);
+    const socket = useRef(null);
 
+    useEffect(() => {
+        // Initialize socket connection
+        socket.current = io('http://192.168.1.2:5000');
+        
+        // Listen for new messages
+        socket.current.on('receiveMessage', () => {
+            fetchUserBookings(); // Refresh bookings to update indicator
+        });
 
+        // Listen for read status updates
+        socket.current.on('messagesRead', () => {
+            fetchUserBookings(); // Refresh bookings to update indicators
+        });
+
+        return () => socket.current.disconnect();
+    }, []);
     useEffect(() => {
         fetchUserBookings();
     }, []);
@@ -181,7 +198,9 @@ const LoadingOverlay = () => (
             </View>
     
             <View style={styles.bookingFooter}>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+                <View style={[styles.statusBadge, { 
+                    backgroundColor: getStatusColor(item.status) 
+                }]}>
                     <Text style={styles.statusText}>
                         {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
                     </Text>
@@ -189,12 +208,8 @@ const LoadingOverlay = () => (
                 <View style={styles.chatButton}>
                     <Icon name="chatbubble-outline" size={18} color="#1F654C" />
                     {item.unread_messages > 0 && (
-                <View style={styles.unreadBadge}>
-                    <Text style={styles.unreadBadgeText}>
-                        {item.unread_messages}
-                    </Text>
-                </View>
-            )}
+                        <View style={styles.unreadDot} />
+                    )}
                 </View>
             </View>
         </TouchableOpacity>
@@ -222,14 +237,14 @@ const LoadingOverlay = () => (
 
 const ServiceItem = ({ item, navigation, authToken, handleEditService, handleDeleteService }) => {
     const [bookingCount, setBookingCount] = useState(0);
+    const [unreadMessages, setUnreadMessages] = useState(0);
 
-    const fetchBookingCount = async () => {
+    const fetchServiceData = async () => {
         try {
-            console.log('Fetching count for service:', item.id);
-            const response = await fetch(
-                `http://192.168.1.2:5000/api/bookings/service/${item.id}/count`,
+            // First get all bookings for this service
+            const bookingsResponse = await fetch(
+                `http://192.168.1.2:5000/api/bookings/service/${item.id}`,
                 {
-                    method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${authToken}`,
                         'Accept': 'application/json',
@@ -237,29 +252,37 @@ const ServiceItem = ({ item, navigation, authToken, handleEditService, handleDel
                     }
                 }
             );
-    
-            // Handle 404 gracefully
-            if (response.status === 404) {
-                console.log('No bookings found for service:', item.id);
-                setBookingCount(0);
-                return;
+
+            if (!bookingsResponse.ok) {
+                throw new Error(`HTTP error! status: ${bookingsResponse.status}`);
             }
-    
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+
+            const bookingsData = await bookingsResponse.json();
+            
+            // Set booking count
+            setBookingCount(Array.isArray(bookingsData) ? bookingsData.length : 0);
+
+            // Calculate unread messages if bookingsData is an array
+            if (Array.isArray(bookingsData)) {
+                const totalUnread = bookingsData.reduce((sum, booking) => 
+                    sum + (parseInt(booking.unread_messages) || 0), 0
+                );
+                setUnreadMessages(totalUnread);
             }
-    
-            const data = await response.json();
-            setBookingCount(data.count || 0);
+
         } catch (error) {
-            console.error('Error fetching booking count:', error);
+            console.error('Error fetching service data:', error);
             setBookingCount(0);
+            setUnreadMessages(0);
         }
     };
 
     useEffect(() => {
-        fetchBookingCount();
-    }, [item.id]);
+        if (item.id && authToken) {
+            fetchServiceData();
+        }
+    }, [item.id, authToken]);
+
     return (
         <TouchableOpacity 
             style={styles.serviceItem}
@@ -279,6 +302,13 @@ const ServiceItem = ({ item, navigation, authToken, handleEditService, handleDel
                         </Text>
                     </View>
                 )}
+                {unreadMessages > 0 && (
+                        <View style={styles.unreadBadge}>
+                            <Text style={styles.unreadBadgeText}>
+                                {unreadMessages}
+                            </Text>
+                        </View>
+                    )}
                 <View style={styles.serviceActions}>
                     <TouchableOpacity 
                         style={styles.editButton}
@@ -1627,38 +1657,34 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: '#E0E0E0'
     },
-    unreadBadge: {
-        position: 'absolute',
-        top: -8,
-        right: -8,
-        backgroundColor: '#FF4444',
-        borderRadius: 12,
-        minWidth: 18,
-        height: 18,
-        justifyContent: 'center',
-        alignItems: 'center'
-    },
-    unreadText: {
-        color: '#FFF',
-        fontSize: 11,
-        fontWeight: 'bold'
+      badgesContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 5,
     },
     unreadBadge: {
-        position: 'absolute',
-        top: -8,
-        right: -8,
         backgroundColor: '#FF4444',
         borderRadius: 12,
-        minWidth: 20,
-        height: 20,
+        minWidth: 24,
+        height: 24,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 6,
+        marginLeft: 8,
+        paddingHorizontal: 8,
     },
     unreadBadgeText: {
         color: '#FFF',
         fontSize: 12,
         fontWeight: 'bold',
+    },
+    unreadDot: {
+        position: 'absolute',
+        top: -5,
+        right: -5,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#FF4444',
     }
 });
 export default ProfileScreen;

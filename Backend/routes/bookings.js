@@ -230,30 +230,37 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
   }
 });
   
-  router.get('/user/bookings', authenticateToken, async (req, res) => {
-    try {
-        const userId = req.user.userId;
-        
-        const bookings = await pool.query(
-            `SELECT 
-                b.*,
-                s.name as service_name,
-                s.image as service_image,
-                u.name as provider_name
-            FROM bookings b
-            JOIN services s ON b.service_id = s.id
-            JOIN users u ON b.provider_id = u.id
-            WHERE b.customer_id = $1
-            ORDER BY b.booking_date DESC, b.booking_time DESC`,
-            [userId]
-        );
-  
-        res.json(bookings.rows);
-    } catch (error) {
-        console.error('Error fetching user bookings:', error);
-        res.status(500).json({ error: 'Failed to fetch bookings' });
-    }
-  });
+router.get('/user/bookings', authenticateToken, async (req, res) => {
+  try {
+      const userId = req.user.userId;
+      
+      const bookings = await pool.query(
+          `SELECT 
+              b.*,
+              s.name as service_name,
+              s.image as service_image,
+              u.name as provider_name,
+              (
+                  SELECT COUNT(*)
+                  FROM messages m
+                  WHERE m.booking_id = b.id
+                  AND m.receiver_id = $1
+                  AND m.read = false
+              ) as unread_messages
+          FROM bookings b
+          JOIN services s ON b.service_id = s.id
+          JOIN users u ON b.provider_id = u.id
+          WHERE b.customer_id = $1
+          ORDER BY b.booking_date DESC, b.booking_time DESC`,
+          [userId]
+      );
+
+      res.json(bookings.rows);
+  } catch (error) {
+      console.error('Error fetching user bookings:', error);
+      res.status(500).json({ error: 'Failed to fetch bookings' });
+  }
+});
   
 /**
  * Get all bookings for a given user.

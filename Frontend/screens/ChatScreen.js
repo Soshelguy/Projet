@@ -84,7 +84,7 @@ const ChatScreen = ({ route, navigation }) => {
 // socket effect
     useEffect(() => {
        // Initialize socket
-    socket.current = io('http://192.168.1.2:5000');
+       socket.current = io('http://192.168.1.2:5000');
     
     // Join chat room
     socket.current.emit('joinRoom', { roomId: bookingId });
@@ -93,16 +93,17 @@ const ChatScreen = ({ route, navigation }) => {
     socket.current.on('receiveMessage', (newMessage) => {
         console.log('Received new message via socket:', newMessage);
         setMessages(prevMessages => {
-            const messageExists = prevMessages.some(msg => msg.id === newMessage.id);
-            if (!messageExists) {
-                // Mark message as read if receiver is current user
-                if (newMessage.receiver_id === currentUserId) {
-                    markMessagesAsRead();
-                }
-                return [...prevMessages, newMessage];
+            // Check if message already exists to prevent duplicates
+            if (prevMessages.some(msg => msg.id === newMessage.id)) {
+                return prevMessages;
             }
-            return prevMessages;
+            return [...prevMessages, newMessage];
         });
+        
+        // Mark as read if receiver is current user
+        if (newMessage.receiver_id === currentUserId) {
+            markMessagesAsRead();
+        }
         flatListRef.current?.scrollToEnd();
     });
     
@@ -435,6 +436,15 @@ const styles = {
         backgroundColor: '#E0F7FA',
         justifyContent: 'center',
         alignItems: 'center'
+    },
+    unreadDot: {
+        position: 'absolute',
+        top: -5,
+        right: -5,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#FF4444',
     }
 };
 
